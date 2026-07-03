@@ -1,0 +1,8 @@
+.next
+node_modules
+.env
+*.db
+*.db-journal
+data/yosoku.db
+data
+outputs/*.log

@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>World Cup Yosoku</title>
+  <style>
+    :root {
+      --bg: #f5f6f2;
+      --panel: #ffffff;
+      --ink: #171918;
+      --muted: #67716b;
+      --line: #dde3dc;
+      --green: #16a06b;
+      --green-soft: #e4f6ef;
+      --red: #d84f4f;
+      --blue: #2b6fe8;
+      --gold: #b48718;
+      --shadow: 0 16px 48px rgba(28, 38, 31, .10);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: Inter, "Noto Sans JP", "Yu Gothic UI", system-ui, sans-serif;
+      letter-spacing: 0;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr) 330px;
+    }
+
+    .sidebar {
+      padding: 22px 16px;
+      border-right: 1px solid var(--line);
+      background: #fbfcf9;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 26px;
+      font-weight: 800;
+      font-size: 19px;
+    }
+
+    .mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--ink);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+    }
+
+    .nav-title {
+      margin: 18px 10px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .nav button {
+      width: 100%;
+      height: 40px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: #333936;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 10px;
+      margin: 2px 0;
+      text-align: left;
+    }
+
+    .nav button.active {
+      background: #eef2ed;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 99px;
+      background: var(--green);
+    }
+
+    main {
+      padding: 22px 28px 36px;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .search {
+      flex: 1;
+      min-width: 220px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      color: var(--muted);
+    }
+
+    .balance {
+      min-width: 176px;
+      height: 44px;
+      border: 1px solid #d6decf;
+      border-radius: 8px;
+      background: #fafff6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 800;
+    }
+
+    .hero {
+      min-height: 210px;
+      border-radius: 8px;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(9, 16, 13, .82), rgba(9, 16, 13, .34)),
+        url("https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1800&q=80");
+      background-size: cover;
+      background-position: center;
+      color: white;
+      display: flex;
+      align-items: end;
+      padding: 26px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: 1.03;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 660px;
+      color: rgba(255,255,255,.82);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin: 18px 0;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .tabs button {
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 8px;
+      padding: 9px 13px;
+      white-space: nowrap;
+      color: #37403b;
+    }
+
+    .tabs button.active {
+      border-color: #111;
+      background: #111;
+      color: white;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 20px 0 10px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .section-head span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .market-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .market {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 285px;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .market-title {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .flag {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #eef2ed;
+      font-size: 13px;
+      font-weight: 900;
+      color: #2b3530;
+      flex: 0 0 auto;
+    }
+
+    .market h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      line-height: 1.35;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 22px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: #fafbf8;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .pick {
+      border: 1px solid #cfe0d7;
+      border-radius: 8px;
+      background: var(--green-soft);
+      color: #0e6244;
+      padding: 10px;
+      min-height: 58px;
+      text-align: left;
+    }
+
+    .pick strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .pick span {
+      font-size: 12px;
+      color: #2f775d;
+    }
+
+    .pick.alt {
+      background: #fff8e7;
+      border-color: #ead8a9;
+      color: #7b5a13;
+    }
+
+    .pick.alt span { color: #856a2e; }
+
+    .side {
+      border-left: 1px solid var(--line);
+      background: #fbfcf9;
+      padding: 22px 18px 34px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .ticket, .ranking {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .ticket h2, .ranking h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .selected {
+      padding: 12px;
+      border-radius: 8px;
+      background: #f1f4ef;
+      margin-bottom: 12px;
+      min-height: 76px;
+    }
+
+    .selected strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .stake-row {
+      display: grid;
+      grid-template-columns: 1fr 86px;
+      gap: 8px;
+    }
+
+    input {
+      width: 100%;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 12px;
+      background: #fff;
+    }
+
+    .primary {
+      width: 100%;
+      height: 44px;
+      border: 0;
+      border-radius: 8px;
+      margin-top: 12px;
+      background: #101412;
+      color: white;
+      font-weight: 800;
+    }
+
+    .quick {
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+    }
+
+    .return {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .return div {
+      border-radius: 8px;
+      background: #f7f8f5;
+      padding: 10px;
+    }
+
+    .return span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .return strong {
+      font-size: 18px;
+    }
+
+    .rank-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .rank-row:first-of-type { border-top: 0; }
+    .rank-row b { color: var(--gold); margin-right: 6px; }
+    .rank-row span { color: var(--muted); font-size: 13px; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%) translateY(80px);
+      background: #111;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: .2s ease;
+      box-shadow: var(--shadow);
+      z-index: 20;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 1060px) {
+      .shell { grid-template-columns: 84px minmax(0, 1fr); }
+      .sidebar { padding: 18px 10px; }
+      .brand span, .nav-title, .nav button span { display: none; }
+      .nav button { justify-content: center; padding: 0; }
+      .side {
+        grid-column: 2;
+        position: static;
+        height: auto;
+        border-left: 0;
+        border-top: 1px solid var(--line);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell { display: block; }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand span, .nav button span { display: inline; }
+      .nav { display: flex; overflow-x: auto; gap: 6px; }
+      .nav-title { display: none; }
+      .nav button {
+        width: auto;
+        min-width: max-content;
+        padding: 0 12px;
+      }
+      main { padding: 16px; }
+      .topbar { flex-direction: column; align-items: stretch; }
+      .hero { min-height: 260px; padding: 20px; }
+      .market { grid-template-columns: 1fr; }
+      .actions { grid-template-columns: 1fr; }
+      .side { display: block; padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="mark">Y</div><span>Yosoku Cup</span></div>
+      <div class="nav-title">マーケット</div>
+      <nav class="nav">
+        <button class="active"><span class="dot"></span><span>ワールドカップ</span></button>
+        <button>🏆<span>優勝国</span></button>
+        <button>⚽<span>試合ごと</span></button>
+        <button>🔥<span>人気</span></button>
+        <button>📈<span>ランキング</span></button>
+      </nav>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div class="search">🔎 マーケットを検索: フランス、得点王、PK戦...</div>
+        <div class="balance">残りポイント <span id="balance">10,000</span>pt</div>
+      </div>
+
+      <section class="hero">
+        <div>
+          <h1>世界の予測オッズで、無料で遊ぶ。</h1>
+          <p>Polymarketの予測価格を参考に、難しいYES/NO株ではなく「倍率」と「もらえるポイント」で表示。現金・暗号資産・換金はなし。</p>
+        </div>
+      </section>
+
+      <div class="tabs" id="tabs">
+        <button class="active" data-filter="all">すべて</button>
+        <button data-filter="match">今日の試合</button>
+        <button data-filter="winner">優勝国</button>
+        <button data-filter="special">特別予測</button>
+      </div>
+
+      <div class="section-head">
+        <h2>注目マーケット</h2>
+        <span>倍率は予測確率から自動換算</span>
+      </div>
+
+      <div class="market-list" id="markets"></div>
+    </main>
+
+    <aside class="side">
+      <section class="ticket">
+        <h2>予想チケット</h2>
+        <div class="selected" id="selected">
+          <strong>マーケットを選択</strong>
+          <span>右のボタンから予想を選ぶと、ここで受け取りポイントを確認できます。</span>
+        </div>
+
+        <label for="stake">使うポイント</label>
+        <div class="stake-row">
+          <input id="stake" type="number" min="10" max="10000" value="100" />
+          <button class="quick" id="maxBtn">最大</button>
+        </div>
+
+        <div class="return">
+          <div><span>的中時</span><strong id="payout">-</strong></div>
+          <div><span>増えるpt</span><strong id="profit">-</strong></div>
+        </div>
+        <button class="primary" id="submitBtn">この内容で予想する</button>
+      </section>
+
+      <section class="ranking">
+        <h2>週間ランキング</h2>
+        <div class="rank-row"><span><b>1</b> ao</span><strong>18,420pt</strong></div>
+        <div class="rank-row"><span><b>2</b> mika</span><strong>15,910pt</strong></div>
+        <div class="rank-row"><span><b>3</b> ren</span><strong>14,330pt</strong></div>
+        <div class="rank-row"><span><b>24</b> あなた</span><strong id="rankScore">10,000pt</strong></div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast">予想を受け付けました</div>
+
+  <script>
+    const markets = [
+      {
+        type: "match",
+        icon: "ARG",
+        title: "アルゼンチンがカーボベルデに勝ち上がる？",
+        note: "延長・PK込み",
+        volume: "試合マーケット",
+        yesLabel: "アルゼンチン",
+        noLabel: "カーボベルデ",
+        yes: 0.88,
+        no: 0.12
+      },
+      {
+        type: "match",
+        icon: "COL",
+        title: "コロンビアがガーナに勝ち上がる？",
+        note: "延長・PK込み",
+        volume: "試合マーケット",
+        yesLabel: "コロンビア",
+        noLabel: "ガーナ",
+        yes: 0.67,
+        no: 0.33
+      },
+      {
+        type: "match",
+        icon: "ESP",
+        title: "スペインがオーストリアに勝ち上がる？",
+        note: "延長・PK込み",
+        volume: "試合マーケット",
+        yesLabel: "スペイン",
+        noLabel: "オーストリア",
+        yes: 0.78,
+        no: 0.22
+      },
+      {
+        type: "winner",
+        icon: "FRA",
+        title: "フランスが2026年ワールドカップで優勝する？",
+        note: "Polymarket参考: 優勝国市場",
+        volume: "24h出来高 大",
+        yesLabel: "優勝する",
+        noLabel: "優勝しない",
+        yes: 0.3495,
+        no: 0.6505
+      },
+      {
+        type: "winner",
+        icon: "ARG",
+        title: "アルゼンチンが2026年ワールドカップで優勝する？",
+        note: "Polymarket参考: 優勝国市場",
+        volume: "人気",
+        yesLabel: "優勝する",
+        noLabel: "優勝しない",
+        yes: 0.1835,
+        no: 0.8165
+      },
+      {
+        type: "winner",
+        icon: "ENG",
+        title: "イングランドが2026年ワールドカップで優勝する？",
+        note: "Polymarket参考: 優勝国市場",
+        volume: "人気",
+        yesLabel: "優勝する",
+        noLabel: "優勝しない",
+        yes: 0.0815,
+        no: 0.9185
+      },
+      {
+        type: "special",
+        icon: "EUR",
+        title: "優勝国はヨーロッパ勢？",
+        note: "大陸別マーケット",
+        volume: "Europe 64%",
+        yesLabel: "ヨーロッパ",
+        noLabel: "それ以外",
+        yes: 0.64,
+        no: 0.36
+      },
+      {
+        type: "special",
+        icon: "TOP",
+        title: "ハリー・ケインが得点王になる？",
+        note: "得点王マーケット",
+        volume: "個人予測",
+        yesLabel: "なる",
+        noLabel: "ならない",
+        yes: 0.075,
+        no: 0.925
+      },
+      {
+        type: "special",
+        icon: "PK",
+        title: "どこかの試合でPK戦になる？",
+        note: "試合詳細予測の例",
+        volume: "追加候補",
+        yesLabel: "PK戦あり",
+        noLabel: "PK戦なし",
+        yes: 0.29,
+        no: 0.71
+      }
+    ];
+
+    let selected = null;
+    let balance = 10000;
+    let currentFilter = "all";
+
+    const marketsEl = document.querySelector("#markets");
+    const selectedEl = document.querySelector("#selected");
+    const stakeEl = document.querySelector("#stake");
+    const payoutEl = document.querySelector("#payout");
+    const profitEl = document.querySelector("#profit");
+    const balanceEl = document.querySelector("#balance");
+    const rankScoreEl = document.querySelector("#rankScore");
+    const toastEl = document.querySelector("#toast");
+
+    function odds(probability) {
+      return Math.max(1.01, 1 / probability);
+    }
+
+    function formatOdds(value) {
+      return value.toFixed(value >= 10 ? 1 : 2) + "倍";
+    }
+
+    function formatPoint(value) {
+      return Math.round(value).toLocaleString("ja-JP") + "pt";
+    }
+
+    function renderMarkets() {
+      marketsEl.innerHTML = "";
+      markets
+        .filter(m => currentFilter === "all" || m.type === currentFilter)
+        .forEach((market, index) => {
+          const card = document.createElement("article");
+          card.className = "market";
+          card.innerHTML = `
+            <div class="market-title">
+              <div class="flag">${market.icon}</div>
+              <div>
+                <h3>${market.title}</h3>
+                <div class="meta">
+                  <span class="pill">${market.note}</span>
+                  <span class="pill">${market.volume}</span>
+                </div>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="pick" data-index="${index}" data-side="yes">
+                <strong>${market.yesLabel}</strong>
+                <span>${Math.round(market.yes * 1000) / 10}% · ${formatOdds(odds(market.yes))}</span>
+              </button>
+              <button class="pick alt" data-index="${index}" data-side="no">
+                <strong>${market.noLabel}</strong>
+                <span>${Math.round(market.no * 1000) / 10}% · ${formatOdds(odds(market.no))}</span>
+              </button>
+            </div>
+          `;
+          marketsEl.appendChild(card);
+        });
+    }
+
+    function updateTicket() {
+      const stake = Math.max(0, Number(stakeEl.value || 0));
+      if (!selected) {
+        payoutEl.textContent = "-";
+        profitEl.textContent = "-";
+        return;
+      }
+      const payout = stake * selected.odds;
+      selectedEl.innerHTML = `
+        <strong>${selected.label}</strong>
+        <span>${selected.title}<br>倍率 ${formatOdds(selected.odds)} · 的中確率目安 ${Math.round(selected.probability * 1000) / 10}%</span>
+      `;
+      payoutEl.textContent = formatPoint(payout);
+      profitEl.textContent = "+" + formatPoint(payout - stake);
+    }
+
+    document.querySelector("#tabs").addEventListener("click", event => {
+      const btn = event.target.closest("button");
+      if (!btn) return;
+      currentFilter = btn.dataset.filter;
+      document.querySelectorAll("#tabs button").forEach(item => item.classList.remove("active"));
+      btn.classList.add("active");
+      renderMarkets();
+    });
+
+    marketsEl.addEventListener("click", event => {
+      const btn = event.target.closest(".pick");
+      if (!btn) return;
+      const market = markets[Number(btn.dataset.index)];
+      const isYes = btn.dataset.side === "yes";
+      const probability = isYes ? market.yes : market.no;
+      selected = {
+        title: market.title,
+        label: isYes ? market.yesLabel : market.noLabel,
+        probability,
+        odds: odds(probability)
+      };
+      updateTicket();
+    });
+
+    stakeEl.addEventListener("input", updateTicket);
+    document.querySelector("#maxBtn").addEventListener("click", () => {
+      stakeEl.value = balance;
+      updateTicket();
+    });
+
+    document.querySelector("#submitBtn").addEventListener("click", () => {
+      const stake = Math.max(0, Number(stakeEl.value || 0));
+      if (!selected || stake < 10 || stake > balance) {
+        showToast("マーケットを選んで、10pt以上を入力してください");
+        return;
+      }
+      balance -= stake;
+      balanceEl.textContent = balance.toLocaleString("ja-JP");
+      rankScoreEl.textContent = balance.toLocaleString("ja-JP") + "pt";
+      showToast(`${selected.label} に ${formatPoint(stake)} で予想しました`);
+    });
+
+    function showToast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.add("show");
+      setTimeout(() => toastEl.classList.remove("show"), 2200);
+    }
+
+    renderMarkets();
+    updateTicket();
+  </script>
+</body>
+</html>
