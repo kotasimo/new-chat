@@ -5,6 +5,8 @@ export type Outcome = {
   label: string;
   probability: number;
   side: "yes" | "no" | "other";
+  finalPrice?: number;
+  winning?: boolean;
 };
 
 export type Market = {
@@ -17,6 +19,9 @@ export type Market = {
   volumeLabel: string;
   source: "polymarket" | "manual";
   polymarketSlug?: string;
+  closed?: boolean;
+  closedAt?: string;
+  winningOutcomeId?: string;
   outcomes: Outcome[];
 };
 
@@ -42,5 +47,7 @@ export type PredictionHistoryItem = {
   stake: number;
   odds: number;
   status: "open" | "won" | "lost" | "void";
+  payout?: number;
+  settledAt?: string;
   createdAt: string;
 };

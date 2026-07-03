@@ -3,6 +3,8 @@ import { createServerSupabaseClient, hasSupabaseConfig } from "@/lib/supabase";
 import type { Market, MarketCategory, PredictionHistoryItem, UserProfile } from "@/lib/types";
 
 const DEMO_EMAIL = "demo@yosoku-cup.local";
+const MARKET_SELECT =
+  "id, slug, category, code, title, note, volume_label, source, polymarket_slug, closed, closed_at, winning_outcome_id, outcomes!outcomes_market_id_fkey(id, label, probability, side, final_price, winning)";
 
 type MarketRecord = {
   id: string;
@@ -14,11 +16,16 @@ type MarketRecord = {
   volume_label: string;
   source: string;
   polymarket_slug: string | null;
+  closed: boolean;
+  closed_at: string | null;
+  winning_outcome_id: string | null;
   outcomes: Array<{
     id: string;
     label: string;
     probability: number;
     side: string;
+    final_price: number | null;
+    winning: boolean;
   }>;
 };
 
@@ -31,8 +38,9 @@ export async function getHomeMarkets(): Promise<Market[]> {
     const supabase = createServerSupabaseClient();
     const { data, error } = await supabase
       .from("markets")
-      .select("id, slug, category, code, title, note, volume_label, source, polymarket_slug, outcomes(id, label, probability, side)")
+      .select(MARKET_SELECT)
       .eq("active", true)
+      .eq("closed", false)
       .order("sort_order", { ascending: true })
       .order("sort_order", { ascending: true, referencedTable: "outcomes" });
 
@@ -56,15 +64,67 @@ export async function getHomeMarkets(): Promise<Market[]> {
       volumeLabel: market.volume_label,
       source: market.source as Market["source"],
       polymarketSlug: market.polymarket_slug ?? undefined,
+      closed: market.closed,
+      closedAt: market.closed_at ?? undefined,
+      winningOutcomeId: market.winning_outcome_id ?? undefined,
       outcomes: market.outcomes.map((outcome) => ({
         id: outcome.id,
         label: outcome.label,
         probability: outcome.probability,
         side: outcome.side as "yes" | "no" | "other",
+        finalPrice: outcome.final_price ?? undefined,
+        winning: outcome.winning,
       })),
     }));
   } catch {
     return initialMarkets;
+  }
+}
+
+export async function getClosedMarkets(limit = 80): Promise<Market[]> {
+  try {
+    if (!hasSupabaseConfig()) {
+      return [];
+    }
+
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("markets")
+      .select(MARKET_SELECT)
+      .eq("active", true)
+      .eq("closed", true)
+      .order("closed_at", { ascending: false, nullsFirst: false })
+      .order("sort_order", { ascending: true, referencedTable: "outcomes" })
+      .limit(limit);
+
+    if (error) {
+      throw error;
+    }
+
+    return ((data ?? []) as MarketRecord[]).map((market) => ({
+      id: market.id,
+      slug: market.slug,
+      category: market.category as MarketCategory,
+      code: market.code,
+      title: market.title,
+      note: market.note,
+      volumeLabel: market.volume_label,
+      source: market.source as Market["source"],
+      polymarketSlug: market.polymarket_slug ?? undefined,
+      closed: market.closed,
+      closedAt: market.closed_at ?? undefined,
+      winningOutcomeId: market.winning_outcome_id ?? undefined,
+      outcomes: market.outcomes.map((outcome) => ({
+        id: outcome.id,
+        label: outcome.label,
+        probability: outcome.probability,
+        side: outcome.side as "yes" | "no" | "other",
+        finalPrice: outcome.final_price ?? undefined,
+        winning: outcome.winning,
+      })),
+    }));
+  } catch {
+    return [];
   }
 }
 
@@ -125,6 +185,7 @@ export async function getOrCreateDemoProfile(
     .from("profiles")
     .insert({
       id: userId,
+      display_name: "あなた",
       points: 10000,
     })
     .select("id, points")
@@ -146,6 +207,8 @@ type PredictionRecord = {
   stake: number;
   odds: number;
   status: "open" | "won" | "lost" | "void";
+  payout: number | null;
+  settled_at: string | null;
   created_at: string;
   markets: { title: string } | Array<{ title: string }> | null;
   outcomes: { label: string } | Array<{ label: string }> | null;
@@ -165,7 +228,7 @@ export async function getDemoPredictionHistory(): Promise<PredictionHistoryItem[
     const profile = await getOrCreateDemoProfile(supabase);
     const { data, error } = await supabase
       .from("predictions")
-      .select("id, stake, odds, status, created_at, markets(title), outcomes(label)")
+      .select("id, stake, odds, status, payout, settled_at, created_at, markets!predictions_market_id_fkey(title), outcomes!predictions_outcome_id_fkey(label)")
       .eq("profile_id", profile.id)
       .order("created_at", { ascending: false })
       .limit(8);
@@ -183,6 +246,8 @@ export async function getDemoPredictionHistory(): Promise<PredictionHistoryItem[
         stake: prediction.stake,
         odds: prediction.odds,
         status: prediction.status,
+        payout: prediction.payout ?? undefined,
+        settledAt: prediction.settled_at ?? undefined,
         createdAt: prediction.created_at,
       };
     });

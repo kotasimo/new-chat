@@ -91,6 +91,7 @@ button {
   gap: 10px;
   padding: 0 10px;
   text-align: left;
+  text-decoration: none;
 }
 
 .nav-item.active {
@@ -226,6 +227,99 @@ button {
 .market-list {
   display: grid;
   gap: 10px;
+}
+
+.history-page {
+  min-width: 0;
+  padding: 22px 28px 36px;
+}
+
+.history-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.history-header h1 {
+  margin: 0 0 6px;
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.history-header p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.closed-market-list {
+  display: grid;
+  gap: 10px;
+}
+
+.closed-market-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.closed-market-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.closed-market-top h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.closed-time {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.closed-outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.closed-outcome {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f8f5;
+  padding: 8px 10px;
+  font-size: 13px;
+  display: inline-grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.closed-outcome.winning {
+  border-color: #15805a;
+  background: var(--green-soft);
+  font-weight: 800;
+}
+
+.closed-outcome strong {
+  font-size: 13px;
+}
+
+.closed-outcome span {
+  color: var(--muted);
+}
+
+.closed-outcome.winning span:last-child {
+  color: #116947;
 }
 
 .market-card {

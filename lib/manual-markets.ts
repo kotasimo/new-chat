@@ -15,6 +15,9 @@ export function getManualMarketRecords() {
         source: market.source,
         polymarket_slug: market.polymarketSlug ?? null,
         active: true,
+        closed: false,
+        closed_at: null,
+        winning_outcome_id: null,
         sort_order: (marketIndex + 1) * 10,
         synced_at: new Date().toISOString(),
       },
@@ -24,6 +27,8 @@ export function getManualMarketRecords() {
         label: outcome.label,
         probability: outcome.probability,
         side: outcome.side,
+        final_price: null,
+        winning: false,
         sort_order: outcomeIndex,
       })),
     }));

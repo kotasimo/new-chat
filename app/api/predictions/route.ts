@@ -15,8 +15,8 @@ type OutcomeRecord = {
   probability: number;
   market_id: string;
   markets:
-    | { id: string; title: string; active: boolean }
-    | Array<{ id: string; title: string; active: boolean }>
+    | { id: string; title: string; active: boolean; closed: boolean }
+    | Array<{ id: string; title: string; active: boolean; closed: boolean }>
     | null;
 };
 
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
   const { data: outcomeData, error: outcomeError } = await supabase
     .from("outcomes")
-    .select("id, label, probability, market_id, markets(id, title, active)")
+    .select("id, label, probability, market_id, markets(id, title, active, closed)")
     .eq("id", outcomeId)
     .single();
 
@@ -77,7 +77,8 @@ export async function POST(request: Request) {
     outcomeError ||
     !outcome ||
     outcome.market_id !== marketId ||
-    !market?.active
+    !market?.active ||
+    market.closed
   ) {
     return NextResponse.json(
       { error: "このマーケットには予想できません。" },

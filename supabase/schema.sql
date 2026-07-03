@@ -9,6 +9,9 @@ create table if not exists public.markets (
   source text not null check (source in ('polymarket', 'manual')),
   polymarket_slug text,
   active boolean not null default true,
+  closed boolean not null default false,
+  closed_at timestamptz,
+  winning_outcome_id text,
   sort_order integer not null default 0,
   synced_at timestamptz,
   created_at timestamptz not null default now(),
@@ -21,6 +24,8 @@ create table if not exists public.outcomes (
   label text not null,
   side text not null check (side in ('yes', 'no', 'other')),
   probability double precision not null check (probability >= 0 and probability <= 1),
+  final_price double precision check (final_price is null or (final_price >= 0 and final_price <= 1)),
+  winning boolean not null default false,
   sort_order integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -42,13 +47,23 @@ create table if not exists public.predictions (
   stake integer not null check (stake > 0),
   odds double precision not null check (odds > 0),
   status text not null default 'open' check (status in ('open', 'won', 'lost', 'void')),
+  payout integer,
+  settled_at timestamptz,
   created_at timestamptz not null default now()
 );
 
 create index if not exists markets_active_sort_idx on public.markets (active, sort_order);
+create index if not exists markets_closed_sort_idx on public.markets (closed, sort_order);
 create index if not exists outcomes_market_sort_idx on public.outcomes (market_id, sort_order);
 create index if not exists predictions_profile_idx on public.predictions (profile_id);
 create index if not exists predictions_market_idx on public.predictions (market_id);
+create index if not exists predictions_status_idx on public.predictions (status);
+
+alter table public.markets
+  drop constraint if exists markets_winning_outcome_id_fkey;
+alter table public.markets
+  add constraint markets_winning_outcome_id_fkey
+  foreign key (winning_outcome_id) references public.outcomes(id) on delete set null;
 
 alter table public.markets enable row level security;
 alter table public.outcomes enable row level security;

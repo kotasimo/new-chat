@@ -10,6 +10,11 @@ type GammaMarket = {
   volume?: number | string | null;
   volumeNum?: number | string | null;
   volume24hr?: number | string | null;
+  active?: boolean;
+  closed?: boolean;
+  archived?: boolean;
+  endDate?: string | null;
+  closedTime?: string | null;
 };
 
 type GammaEvent = {
@@ -17,6 +22,11 @@ type GammaEvent = {
   slug: string;
   volume?: number | string | null;
   volume24hr?: number | string | null;
+  active?: boolean;
+  closed?: boolean;
+  archived?: boolean;
+  endDate?: string | null;
+  closedTime?: string | null;
   markets?: GammaMarket[];
 };
 
@@ -32,6 +42,9 @@ type AppMarketRecord = {
     source: "polymarket";
     polymarket_slug: string;
     active: boolean;
+    closed: boolean;
+    closed_at: string | null;
+    winning_outcome_id: string | null;
     sort_order: number;
     synced_at: string;
   };
@@ -40,6 +53,8 @@ type AppMarketRecord = {
     market_id: string;
     label: string;
     probability: number;
+    final_price: number | null;
+    winning: boolean;
     side: "yes" | "no" | "other";
     sort_order: number;
   }>;
@@ -51,8 +66,10 @@ const WORLD_CUP_2026_TAG_ID = "102350";
 
 export async function fetchPolymarketWorldCupEvents(limit = 80) {
   const events = await Promise.all([
-    fetchGammaEvents(FIFA_WORLD_CUP_TAG_ID, limit),
-    fetchGammaEvents(WORLD_CUP_2026_TAG_ID, limit),
+    fetchGammaEvents(FIFA_WORLD_CUP_TAG_ID, limit, false),
+    fetchGammaEvents(WORLD_CUP_2026_TAG_ID, limit, false),
+    fetchGammaEvents(FIFA_WORLD_CUP_TAG_ID, limit, true),
+    fetchGammaEvents(WORLD_CUP_2026_TAG_ID, limit, true),
   ]);
 
   const bySlug = new Map<string, GammaEvent>();
@@ -107,6 +124,7 @@ function toMatchFallbackRecord(event: GammaEvent, sortOrder: number): AppMarketR
   const teams = parseMatchTitle(event.title);
   if (!teams) return null;
 
+  const status = eventStatus(event);
   const outcomes = event.markets
     ?.map((market) => {
       const yesPrice = getOutcomePrice(market, "Yes");
@@ -133,6 +151,16 @@ function toMatchFallbackRecord(event: GammaEvent, sortOrder: number): AppMarketR
     teams,
   );
   const id = `polymarket-event-${event.slug}`;
+  const outcomeRows = ordered.map((outcome, index) => ({
+    id: `${id}-${index}`,
+    market_id: id,
+    label: outcome.label,
+    probability: clampProbability(outcome.probability),
+    final_price: status.closed ? clampProbability(outcome.probability) : null,
+    winning: status.closed && outcome.probability >= 0.999,
+    side: outcomeSide(index),
+    sort_order: index,
+  }));
 
   return {
     market: {
@@ -146,17 +174,13 @@ function toMatchFallbackRecord(event: GammaEvent, sortOrder: number): AppMarketR
       source: "polymarket",
       polymarket_slug: event.slug,
       active: true,
+      closed: status.closed,
+      closed_at: status.closedAt,
+      winning_outcome_id: winningOutcomeId(outcomeRows),
       sort_order: sortOrder,
       synced_at: new Date().toISOString(),
     },
-    outcomes: ordered.map((outcome, index) => ({
-      id: `${id}-${index}`,
-      market_id: id,
-      label: outcome.label,
-      probability: clampProbability(outcome.probability),
-      side: index === 0 ? "yes" : index === 1 ? "no" : "other",
-      sort_order: index,
-    })),
+    outcomes: outcomeRows,
   };
 }
 
@@ -199,8 +223,19 @@ function toTeamAdvanceRecord(
   teams: { home: string; away: string },
   sortOrder: number,
 ): AppMarketRecord {
-  const outcomes = parseGammaOutcomes(market);
+  const status = marketStatus(market);
+  const outcomes = parseGammaOutcomes(market, status.closed);
   const id = `polymarket-market-${market.slug}`;
+  const outcomeRows = outcomes.map((outcome, index) => ({
+    id: `${id}-${index}`,
+    market_id: id,
+    label: toJa(outcome.label),
+    probability: clampProbability(outcome.probability),
+    final_price: outcome.finalPrice,
+    winning: status.closed && outcome.finalPrice !== null && outcome.finalPrice >= 0.999,
+    side: outcomeSide(index),
+    sort_order: index,
+  }));
 
   return {
     market: {
@@ -214,25 +249,25 @@ function toTeamAdvanceRecord(
       source: "polymarket",
       polymarket_slug: market.slug,
       active: true,
+      closed: status.closed,
+      closed_at: status.closedAt,
+      winning_outcome_id: winningOutcomeId(outcomeRows),
       sort_order: sortOrder,
       synced_at: new Date().toISOString(),
     },
-    outcomes: outcomes.map((outcome, index) => ({
-      id: `${id}-${index}`,
-      market_id: id,
-      label: toJa(outcome.label),
-      probability: clampProbability(outcome.probability),
-      side: index === 0 ? "yes" : index === 1 ? "no" : "other",
-      sort_order: index,
-    })),
+    outcomes: outcomeRows,
   };
 }
 
 function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketRecord | null {
+  const status = eventStatus(event);
   const topMarkets = (event.markets ?? [])
     .map((market) => ({
       market,
       probability: getOutcomePrice(market, "Yes"),
+      finalPrice: marketStatus(market, status).closed
+        ? getOutcomePrice(market, "Yes")
+        : null,
       label: toJa(market.groupItemTitle || extractFutureItem(market.question)),
     }))
     .filter((item) => item.probability > 0.001 && item.label && !item.label.includes("Team "))
@@ -242,6 +277,16 @@ function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketR
   if (topMarkets.length < 2) return null;
 
   const id = `polymarket-event-${event.slug}`;
+  const outcomeRows = topMarkets.map((item, index) => ({
+    id: `${id}-${item.market.slug}`,
+    market_id: id,
+    label: item.label,
+    probability: clampProbability(item.probability),
+    final_price: item.finalPrice === null ? null : clampProbability(item.finalPrice),
+    winning: status.closed && item.finalPrice !== null && item.finalPrice >= 0.999,
+    side: outcomeSide(index),
+    sort_order: index,
+  }));
 
   return {
     market: {
@@ -255,17 +300,13 @@ function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketR
       source: "polymarket",
       polymarket_slug: event.slug,
       active: true,
+      closed: status.closed,
+      closed_at: status.closedAt,
+      winning_outcome_id: winningOutcomeId(outcomeRows),
       sort_order: sortOrder,
       synced_at: new Date().toISOString(),
     },
-    outcomes: topMarkets.map((item, index) => ({
-      id: `${id}-${item.market.slug}`,
-      market_id: id,
-      label: item.label,
-      probability: clampProbability(item.probability),
-      side: index === 0 ? "yes" : index === 1 ? "no" : "other",
-      sort_order: index,
-    })),
+    outcomes: outcomeRows,
   };
 }
 
@@ -286,7 +327,18 @@ function toTwoOutcomeRecord({
   note: string;
   sortOrder: number;
 }): AppMarketRecord {
-  const outcomes = parseGammaOutcomes(market);
+  const status = marketStatus(market);
+  const outcomes = parseGammaOutcomes(market, status.closed);
+  const outcomeRows = outcomes.map((outcome, index) => ({
+    id: `${id}-${index}`,
+    market_id: id,
+    label: translateOutcome(outcome.label),
+    probability: clampProbability(outcome.probability),
+    final_price: outcome.finalPrice,
+    winning: status.closed && outcome.finalPrice !== null && outcome.finalPrice >= 0.999,
+    side: outcomeSide(index),
+    sort_order: index,
+  }));
 
   return {
     market: {
@@ -300,17 +352,13 @@ function toTwoOutcomeRecord({
       source: "polymarket",
       polymarket_slug: market.slug,
       active: true,
+      closed: status.closed,
+      closed_at: status.closedAt,
+      winning_outcome_id: winningOutcomeId(outcomeRows),
       sort_order: sortOrder,
       synced_at: new Date().toISOString(),
     },
-    outcomes: outcomes.map((outcome, index) => ({
-      id: `${id}-${index}`,
-      market_id: id,
-      label: translateOutcome(outcome.label),
-      probability: clampProbability(outcome.probability),
-      side: index === 0 ? "yes" : index === 1 ? "no" : "other",
-      sort_order: index,
-    })),
+    outcomes: outcomeRows,
   };
 }
 
@@ -334,20 +382,23 @@ function isUsefulFutureEvent(event: GammaEvent) {
   ].includes(event.slug);
 }
 
-function parseGammaOutcomes(market: GammaMarket) {
+function parseGammaOutcomes(market: GammaMarket, closed = false) {
   const labels = safeJsonArray(market.outcomes);
   const prices = safeJsonArray(market.outcomePrices).map(Number);
 
   return labels.map((label, index) => ({
     label: String(label),
     probability: Number.isFinite(prices[index]) ? prices[index] : 0,
+    finalPrice: closed && Number.isFinite(prices[index])
+      ? clampProbability(prices[index])
+      : null,
   }));
 }
 
-async function fetchGammaEvents(tagId: string, limit: number) {
+async function fetchGammaEvents(tagId: string, limit: number, closed: boolean) {
   const url = new URL("/events", GAMMA_BASE_URL);
   url.searchParams.set("active", "true");
-  url.searchParams.set("closed", "false");
+  url.searchParams.set("closed", String(closed));
   url.searchParams.set("limit", String(limit));
   url.searchParams.set("tag_id", tagId);
   url.searchParams.set("order", "volume24hr");
@@ -367,6 +418,35 @@ async function fetchGammaEvents(tagId: string, limit: number) {
 
 function getOutcomePrice(market: GammaMarket, label: string) {
   return parseGammaOutcomes(market).find((outcome) => outcome.label === label)?.probability ?? 0;
+}
+
+function eventStatus(event: GammaEvent) {
+  return {
+    closed: Boolean(event.closed),
+    closedAt: event.closedTime ?? null,
+  };
+}
+
+function marketStatus(
+  market: GammaMarket,
+  fallback: { closed: boolean; closedAt: string | null } = { closed: false, closedAt: null },
+) {
+  const closed = market.closed ?? fallback.closed;
+
+  return {
+    closed: Boolean(closed),
+    closedAt: closed ? market.closedTime ?? fallback.closedAt : null,
+  };
+}
+
+function winningOutcomeId(outcomes: Array<{ id: string; winning: boolean }>) {
+  return outcomes.find((outcome) => outcome.winning)?.id ?? null;
+}
+
+function outcomeSide(index: number): "yes" | "no" | "other" {
+  if (index === 0) return "yes";
+  if (index === 1) return "no";
+  return "other";
 }
 
 function parseMatchTitle(title: string) {
