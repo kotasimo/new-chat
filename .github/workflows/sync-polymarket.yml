@@ -1,0 +1,21 @@
+name: Sync Polymarket
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call sync endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SYNC_SECRET: ${{ secrets.SYNC_SECRET }}
+        run: |
+          curl --fail --show-error --silent \
+            --request POST \
+            --header "Authorization: Bearer ${SYNC_SECRET}" \
+            "${APP_URL}/api/sync/polymarket"
