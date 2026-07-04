@@ -267,12 +267,6 @@ export function MarketBoard({
                 polymarket.com
               </a>
             </p>
-            <ul className="hero-points">
-              <li>市場を選ぶ</li>
-              <li>ポイントで予想</li>
-              <li>的中で増える</li>
-              <li>試合開始で締切</li>
-            </ul>
           </div>
           <div className="hero-actions">
             <button type="button" onClick={shareSite}>

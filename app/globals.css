@@ -316,27 +316,6 @@ button {
   text-underline-offset: 3px;
 }
 
-.hero-points {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  list-style: none;
-  margin: 14px 0 0;
-  max-width: 860px;
-  padding: 0;
-}
-
-.hero-points li {
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  color: white;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.35;
-  padding: 6px 9px;
-}
-
 .hero-actions {
   align-items: center;
   bottom: 24px;
@@ -1479,6 +1458,10 @@ button {
   }
 
   .brand-mark {
+    display: grid;
+  }
+
+  .brand-name {
     display: none;
   }
 
@@ -1512,7 +1495,6 @@ button {
 
   .brand span,
   .nav-item span:not(.status-dot),
-  .sidebar-profile span,
   .sidebar-profile strong,
   .sidebar-profile small,
   .sidebar-profile button,
@@ -1550,7 +1532,7 @@ button {
 
   .sidebar-profile {
     border-top: 0;
-    align-items: center;
+    align-items: flex-end;
     display: flex;
     gap: 8px;
     grid-column: 4;
@@ -1567,9 +1549,10 @@ button {
 
   .sidebar-profile-view,
   .sidebar-profile-edit {
-    align-items: center;
+    align-items: flex-end;
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
     max-width: none;
   }
 
@@ -1577,11 +1560,14 @@ button {
     display: block;
     font-size: 15px;
     max-width: 92px;
+    text-align: right;
   }
 
   .sidebar-profile button {
-    height: 28px;
+    height: 24px;
     flex: 0 0 auto;
+    font-size: 11px;
+    padding: 0 7px;
   }
 
   .main-content {
@@ -1701,17 +1687,6 @@ button {
     min-height: 260px;
     padding: 20px;
     align-items: end;
-  }
-
-  .hero-points {
-    gap: 6px;
-    margin-top: 12px;
-  }
-
-  .hero-points li {
-    border-radius: 8px;
-    font-size: 11px;
-    padding: 5px 7px;
   }
 
   .hero-actions {

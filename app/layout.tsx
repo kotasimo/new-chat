@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://yosoku-cup.vercel.app";
+const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -64,4 +64,18 @@ export default function RootLayout({
       <body>{children}</body>
     </html>
   );
+}
+
+function getSiteUrl() {
+  const value = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+  if (value) {
+    try {
+      return new URL(value).origin;
+    } catch {
+      // Fall through to the local default when the env var is incomplete.
+    }
+  }
+
+  return "http://127.0.0.1:3000";
 }

@@ -117,7 +117,6 @@ export function AppSidebar() {
     <aside className="sidebar">
       <div className="brand">
         <div className="brand-mark">Y</div>
-        <span>Yosoku Cup</span>
       </div>
       <div className="sidebar-balance" aria-label="保有ポイント">
         {points === null ? "確認中" : `${points.toLocaleString("ja-JP")}pt`}
@@ -172,7 +171,7 @@ export function AppSidebar() {
           <div className="sidebar-profile-view">
             <strong suppressHydrationWarning>{displayName}</strong>
             <button type="button" onClick={() => setEditingName(true)}>
-              変更
+              アカウント名変更
             </button>
           </div>
         )}
