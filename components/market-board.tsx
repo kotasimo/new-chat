@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
+import Link from "next/link";
 import type { MouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MarketCard } from "@/components/market-card";
@@ -15,7 +16,7 @@ import type {
 
 const tabs: Array<{ key: "all" | MarketCategory; label: string }> = [
   { key: "all", label: "すべて" },
-  { key: "match", label: "今日の試合" },
+  { key: "match", label: "勝敗予測" },
   { key: "winner", label: "優勝国" },
   { key: "special", label: "特別予測" },
 ];
@@ -194,6 +195,30 @@ export function MarketBoard({
     }
   }
 
+  async function shareSite(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+
+    const shareData = {
+      title: "Yosoku Cup",
+      text: "世界の予測オッズで、無料で遊ぶ。Yosoku Cup",
+      url: window.location.origin,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // Sharing can be cancelled by the user.
+      }
+      return;
+    }
+
+    const shareUrl = new URL("https://twitter.com/intent/tweet");
+    shareUrl.searchParams.set("text", shareData.text);
+    shareUrl.searchParams.set("url", shareData.url);
+    window.open(shareUrl.toString(), "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div className="board-layout" onClick={clearSelectionOnOutsideClick}>
       <main className="main-content">
@@ -248,6 +273,14 @@ export function MarketBoard({
               <li>的中で増える</li>
               <li>試合開始で締切</li>
             </ul>
+          </div>
+          <div className="hero-actions">
+            <button type="button" onClick={shareSite}>
+              共有する
+            </button>
+            <Link className="hero-guide-link" href="/guide">
+              遊び方を見る
+            </Link>
           </div>
         </section>
 

@@ -195,6 +195,14 @@ function toSelectedMoreMarketRecords(event: GammaEvent, baseSortOrder: number) {
     records.push(toTeamAdvanceRecord(advanceMarket, teams, baseSortOrder - 150));
   }
 
+  const propRecords = (event.markets ?? [])
+    .map((market, index) =>
+      toMatchPropRecord(market, teams, baseSortOrder + index + records.length),
+    )
+    .filter((record): record is AppMarketRecord => record !== null);
+
+  records.push(...propRecords);
+
   return records;
 }
 
@@ -226,6 +234,55 @@ function toTeamAdvanceRecord(
       code: `${teamCode(teams.home)}-${teamCode(teams.away)}`,
       title: `${toJa(teams.home)} vs ${toJa(teams.away)}: 勝ち上がるのは？`,
       note: "延長・PK込み",
+      volume_label: formatVolumeLabel(market.volumeNum ?? market.volume),
+      source: "polymarket",
+      polymarket_slug: market.slug,
+      active: true,
+      closed: status.closed,
+      closed_at: status.closedAt,
+      starts_at: lockAt,
+      lock_at: lockAt,
+      winning_outcome_id: winningOutcomeId(outcomeRows),
+      sort_order: sortOrder,
+      synced_at: new Date().toISOString(),
+    },
+    outcomes: outcomeRows,
+  };
+}
+
+function toMatchPropRecord(
+  market: GammaMarket,
+  teams: { home: string; away: string },
+  sortOrder: number,
+): AppMarketRecord | null {
+  const title = matchPropTitle(market.slug, teams);
+  if (!title) return null;
+
+  const status = marketStatus(market);
+  const lockAt = market.endDate ?? null;
+  const outcomes = parseGammaOutcomes(market, status.closed);
+  const id = `polymarket-market-${market.slug}`;
+  const outcomeRows = outcomes.map((outcome, index) => ({
+    id: `${id}-${index}`,
+    market_id: id,
+    label: toJa(outcome.label),
+    probability: clampProbability(outcome.probability),
+    final_price: outcome.finalPrice,
+    winning: status.closed && outcome.finalPrice !== null && outcome.finalPrice >= 0.999,
+    side: outcomeSide(index),
+    sort_order: index,
+  }));
+
+  if (outcomeRows.length < 2) return null;
+
+  return {
+    market: {
+      id,
+      slug: market.slug,
+      category: "match",
+      code: `${teamCode(teams.home)}-${teamCode(teams.away)}`,
+      title,
+      note: "試合関連",
       volume_label: formatVolumeLabel(market.volumeNum ?? market.volume),
       source: "polymarket",
       polymarket_slug: market.slug,
@@ -414,6 +471,28 @@ function matchResultLabel(value: string, teams: { home: string; away: string }) 
   if (value.includes(teams.home) || value === teams.home) return `${toJa(teams.home)}勝利`;
   if (value.includes(teams.away) || value === teams.away) return `${toJa(teams.away)}勝利`;
   return "";
+}
+
+function matchPropTitle(slug: string, teams: { home: string; away: string }) {
+  const prefix = `${toJa(teams.home)} vs ${toJa(teams.away)}`;
+
+  if (/-\d{4}-\d{2}-\d{2}-total-2pt5$/.test(slug)) {
+    return `${prefix}: 合計3点以上？`;
+  }
+
+  if (/-\d{4}-\d{2}-\d{2}-btts$/.test(slug)) {
+    return `${prefix}: 両チーム得点する？`;
+  }
+
+  if (/-\d{4}-\d{2}-\d{2}-first-half-total-0pt5$/.test(slug)) {
+    return `${prefix}: 前半に1点以上入る？`;
+  }
+
+  if (/-\d{4}-\d{2}-\d{2}-penalty-shootout$/.test(slug)) {
+    return `${prefix}: PK戦になる？`;
+  }
+
+  return null;
 }
 
 function orderMatchOutcomes(
