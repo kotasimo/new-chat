@@ -1,12 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
+import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
 import { formatOdds, formatPoints } from "@/lib/odds";
 import type { PredictionHistoryItem, SelectedPrediction } from "@/lib/types";
 
 type PredictionPanelProps = {
   balance: number;
+  guestError: string;
+  guestLoading: boolean;
+  guestReady: boolean;
+  predictionHistory: PredictionHistoryItem[];
   selectedPrediction: SelectedPrediction | null;
+  notice: string;
+  onClearSelection: () => void;
+  onNoticeShown: () => void;
   onPredictionCreated: (result: {
     nextBalance: number;
     prediction: PredictionHistoryItem;
@@ -15,7 +24,14 @@ type PredictionPanelProps = {
 
 export function PredictionPanel({
   balance,
+  guestError,
+  guestLoading,
+  guestReady,
+  predictionHistory,
   selectedPrediction,
+  notice,
+  onClearSelection,
+  onNoticeShown,
   onPredictionCreated,
 }: PredictionPanelProps) {
   const [stake, setStake] = useState(100);
@@ -30,6 +46,13 @@ export function PredictionPanel({
     return stake * selectedPrediction.odds;
   }, [selectedPrediction, stake]);
 
+  useEffect(() => {
+    if (!notice) return;
+
+    const timer = window.setTimeout(onNoticeShown, 2200);
+    return () => window.clearTimeout(timer);
+  }, [notice, onNoticeShown]);
+
   async function submitPrediction() {
     if (!selectedPrediction || stake < 10 || stake > balance) {
       showToast("マーケットを選んで、10pt以上を入力してください");
@@ -39,7 +62,7 @@ export function PredictionPanel({
     setSubmitting(true);
 
     try {
-      const response = await fetch("/api/predictions", {
+      const response = await fetchWithAnonymousAuth("/api/predictions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,9 +99,30 @@ export function PredictionPanel({
     window.setTimeout(() => setToast(""), 2200);
   }
 
+  const activeToast = toast || notice;
+
   return (
-    <aside className="side-panel">
+    <aside className={`side-panel ${selectedPrediction ? "has-selection" : ""}`}>
+      <section className="asset-card">
+        <span>保有ポイント</span>
+        <strong className={guestLoading ? "loading-value" : ""}>
+          {guestLoading ? "確認中" : `${balance.toLocaleString("ja-JP")}pt`}
+        </strong>
+        {guestLoading ? <small>ゲスト情報を確認しています。</small> : null}
+        {!guestLoading && guestError ? <small>{guestError}</small> : null}
+      </section>
+
       <section className="ticket">
+        {selectedPrediction ? (
+          <button
+            aria-label="選択を解除"
+            className="ticket-close"
+            type="button"
+            onClick={onClearSelection}
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        ) : null}
         <h2>予想チケット</h2>
         <div className="selected-box">
           {selectedPrediction ? (
@@ -133,15 +177,54 @@ export function PredictionPanel({
         <button
           className="primary-button"
           data-testid="submit-prediction"
-          disabled={submitting}
+          disabled={submitting || !guestReady}
           type="button"
           onClick={submitPrediction}
         >
-          {submitting ? "保存中..." : "この内容で予想する"}
+          {submitting ? "保存中..." : "予想確定"}
         </button>
       </section>
 
-      <div className={`toast ${toast ? "show" : ""}`}>{toast}</div>
+      <section className="history-card">
+        <h2>自分の予想</h2>
+        {guestLoading ? (
+          <p className="empty-text">読み込み中...</p>
+        ) : predictionHistory.length ? (
+          <div className="history-list">
+            {predictionHistory.map((prediction) => (
+              <article className="history-row" key={prediction.id}>
+                <strong>{prediction.outcomeLabel}</strong>
+                <span>{prediction.marketTitle}</span>
+                <div className="history-meta">
+                  <span>{formatPoints(prediction.stake)}</span>
+                  <span>{formatOdds(prediction.odds)}</span>
+                  <small>{statusLabel(prediction)}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="empty-text">まだ予想はありません。</p>
+        )}
+      </section>
+
+      <div className={`toast ${activeToast ? "show" : ""}`}>{activeToast}</div>
     </aside>
   );
+}
+
+function statusLabel(prediction: PredictionHistoryItem) {
+  if (prediction.status === "open") {
+    return "結果待ち";
+  }
+
+  if (prediction.status === "won") {
+    return `的中 +${formatPoints(prediction.payout ?? 0)}`;
+  }
+
+  if (prediction.status === "lost") {
+    return "外れ";
+  }
+
+  return "無効";
 }

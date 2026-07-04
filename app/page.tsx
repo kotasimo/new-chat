@@ -1,19 +1,20 @@
 import { MarketBoard } from "@/components/market-board";
 import { AppSidebar } from "@/components/app-sidebar";
-import { getDemoProfile, getHomeMarkets } from "@/lib/data";
+import { getHomeMarkets } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [markets, profile] = await Promise.all([
-    getHomeMarkets(),
-    getDemoProfile(),
-  ]);
+  const markets = await getHomeMarkets();
 
   return (
     <div className="app-shell">
       <AppSidebar />
-      <MarketBoard initialBalance={profile.points} markets={markets} />
+      <MarketBoard
+        initialBalance={10000}
+        initialPredictionHistory={[]}
+        markets={markets}
+      />
     </div>
   );
 }

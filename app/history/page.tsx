@@ -1,64 +1,161 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { getClosedMarkets } from "@/lib/data";
-import { formatOdds, probabilityToOdds } from "@/lib/odds";
+import { formatProbability } from "@/lib/odds";
+import { volumeLabelToUsdValue } from "@/lib/volume";
+import type { CSSProperties } from "react";
 
 export const dynamic = "force-dynamic";
 
-export default async function HistoryPage() {
-  const markets = await getClosedMarkets();
+type HistorySort = "latest" | "volume" | "upset";
+
+const sortOptions: Array<{ key: HistorySort; label: string }> = [
+  { key: "latest", label: "新着順" },
+  { key: "volume", label: "取引額順" },
+  { key: "upset", label: "番狂わせ順" },
+];
+
+type HistoryPageProps = {
+  searchParams?: Promise<{
+    sort?: string;
+  }>;
+};
+
+export default async function HistoryPage({ searchParams }: HistoryPageProps) {
+  const params = await searchParams;
+  const activeSort = toHistorySort(params?.sort);
+  const markets = sortClosedMarkets(
+    (await getClosedMarkets(200)).filter((market) =>
+      hasRecordedProbabilities(market),
+    ),
+    activeSort,
+  );
 
   return (
     <div className="app-shell">
       <AppSidebar />
-      <main className="history-page">
-        <header className="history-header">
-          <div>
-            <h1>終了市場</h1>
-            <p>過去に表示されたワールドカップ予測市場と結果。</p>
-          </div>
-        </header>
+      <div className="board-layout">
+        <main className="history-page">
+          <header className="history-header">
+            <div>
+              <h1>終了市場</h1>
+              <p>過去に表示されたワールドカップ予測市場と結果。</p>
+            </div>
+            <nav className="history-sort" aria-label="終了市場の並び替え">
+              {sortOptions.map((option) => (
+                <a
+                  className={`history-sort-button ${
+                    activeSort === option.key ? "active" : ""
+                  }`}
+                  href={`/history?sort=${option.key}`}
+                  key={option.key}
+                >
+                  {option.label}
+                </a>
+              ))}
+            </nav>
+          </header>
 
-        <div className="closed-market-list">
-          {markets.length ? (
-            markets.map((market) => (
-              <article className="closed-market-card" key={market.id}>
-                <div className="closed-market-top">
-                  <div>
-                    <h2>{market.title}</h2>
-                    <div className="market-volume">{market.volumeLabel}</div>
+          <div className="closed-market-list">
+            {markets.length ? (
+              markets.map((market) => (
+                <article className="closed-market-card" key={market.id}>
+                  <div className="closed-market-top">
+                    <div>
+                      <h2>{market.title}</h2>
+                      <div className="market-volume">{market.volumeLabel}</div>
+                    </div>
+                    <time className="closed-time">
+                      {market.closedAt ? formatDateTime(market.closedAt) : "終了済み"}
+                    </time>
                   </div>
-                  <time className="closed-time">
-                    {market.closedAt ? formatDateTime(market.closedAt) : "終了済み"}
-                  </time>
-                </div>
 
-                <div className="closed-outcomes">
-                  {market.outcomes.map((outcome) => (
-                    <span
-                      className={`closed-outcome ${outcome.winning ? "winning" : ""}`}
-                      key={outcome.id}
-                    >
-                      <strong>{outcome.label}</strong>
-                      <span>{formatOutcomeOdds(outcome.probability, outcome.finalPrice)}</span>
-                      <span>
-                        {outcome.finalPrice === undefined
-                          ? "結果待ち"
-                          : outcome.winning
-                            ? "的中"
-                            : "外れ"}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))
-          ) : (
-            <p className="empty-text">
-              終了市場はまだありません。同期後に closed の市場がここに残ります。
-            </p>
-          )}
-        </div>
-      </main>
+                  <div className="closed-outcomes">
+                    {sortOutcomesForHistory(market.outcomes).map((outcome) => {
+                      const probability = outcomeProbability(
+                        outcome.probability,
+                        outcome.finalPrice,
+                      );
+                      const strength = probability === null
+                        ? 0
+                        : Math.max(2, Math.round(probability * 100));
+
+                      return (
+                        <div
+                          className={`closed-outcome ${outcome.winning ? "is-hit" : ""}`}
+                          key={outcome.id}
+                          style={{ "--odds-strength": `${strength}%` } as CSSProperties}
+                        >
+                          <div className="closed-outcome-head">
+                            <strong>{outcome.label}</strong>
+                          </div>
+                          <div className="odds-line">
+                            <span className="odds-value">
+                              {probability === null
+                                ? outcome.winning
+                                  ? "結果"
+                                  : ""
+                                : formatProbability(probability)}
+                            </span>
+                          </div>
+                          <div className="odds-meter" aria-hidden="true">
+                            <span />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="empty-text">
+                終了市場はまだありません。同期後に closed の市場がここに残ります。
+              </p>
+            )}
+          </div>
+        </main>
+
+        <aside className="side-panel">
+          <section className="ticket">
+            <h2>予想チケット</h2>
+            <div className="selected-box">
+              <strong>マーケットを選択</strong>
+              <span className="muted">
+                予測する画面でマーケットを選ぶと、ここで受け取りポイントを確認できます。
+              </span>
+            </div>
+
+            <label className="field-label" htmlFor="history-stake">
+              使うポイント
+            </label>
+            <div className="stake-row">
+              <input
+                className="stake-input"
+                id="history-stake"
+                readOnly
+                type="number"
+                value={100}
+              />
+              <button className="quick-button" disabled type="button">
+                最大
+              </button>
+            </div>
+
+            <div className="return-grid">
+              <div>
+                <span>倍率</span>
+                <strong>-</strong>
+              </div>
+              <div>
+                <span aria-hidden="true">&nbsp;</span>
+                <strong>-</strong>
+              </div>
+            </div>
+            <button className="primary-button" disabled type="button">
+              この内容で予想する
+            </button>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }
@@ -71,14 +168,64 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-function formatOutcomeOdds(probability: number, finalPrice?: number) {
+function outcomeProbability(probability: number, finalPrice?: number) {
   if (
     finalPrice !== undefined &&
     Math.abs(probability - finalPrice) < 0.00001 &&
     (finalPrice <= 0.0001 || finalPrice >= 0.9999)
   ) {
-    return "倍率記録なし";
+    return null;
   }
 
-  return formatOdds(probabilityToOdds(probability));
+  return probability;
+}
+
+type HistoryOutcome = Awaited<ReturnType<typeof getClosedMarkets>>[number]["outcomes"][number];
+type ClosedMarket = Awaited<ReturnType<typeof getClosedMarkets>>[number];
+
+function sortOutcomesForHistory(outcomes: HistoryOutcome[]) {
+  return [...outcomes].sort((a, b) => Number(b.winning) - Number(a.winning));
+}
+
+function hasRecordedProbabilities(market: ClosedMarket) {
+  return market.outcomes.some((outcome) =>
+    outcomeProbability(outcome.probability, outcome.finalPrice) !== null,
+  );
+}
+
+function toHistorySort(value?: string): HistorySort {
+  if (value === "volume" || value === "upset") {
+    return value;
+  }
+
+  return "latest";
+}
+
+function sortClosedMarkets(markets: ClosedMarket[], sort: HistorySort) {
+  return [...markets].sort((a, b) => {
+    if (sort === "volume") {
+      return volumeValue(b.volumeLabel) - volumeValue(a.volumeLabel);
+    }
+
+    if (sort === "upset") {
+      return hitOdds(b) - hitOdds(a);
+    }
+
+    return dateValue(b.closedAt) - dateValue(a.closedAt);
+  });
+}
+
+function hitOdds(market: ClosedMarket) {
+  const hit = market.outcomes.find((outcome) => outcome.winning);
+  const probability = hit ? outcomeProbability(hit.probability, hit.finalPrice) : null;
+
+  return probability ? 1 / probability : 0;
+}
+
+function dateValue(value?: string) {
+  return value ? new Date(value).getTime() : 0;
+}
+
+function volumeValue(label: string) {
+  return volumeLabelToUsdValue(label) ?? 0;
 }

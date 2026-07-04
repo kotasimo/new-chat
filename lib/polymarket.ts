@@ -1,5 +1,6 @@
 import { countryToJapanese } from "@/lib/countries";
 import { playerNameToJapanese } from "@/lib/player-names";
+import { formatUsdVolumeAsYen } from "@/lib/volume";
 
 type GammaMarket = {
   question: string;
@@ -13,6 +14,7 @@ type GammaMarket = {
   active?: boolean;
   closed?: boolean;
   archived?: boolean;
+  startDate?: string | null;
   endDate?: string | null;
   closedTime?: string | null;
 };
@@ -25,6 +27,7 @@ type GammaEvent = {
   active?: boolean;
   closed?: boolean;
   archived?: boolean;
+  startDate?: string | null;
   endDate?: string | null;
   closedTime?: string | null;
   markets?: GammaMarket[];
@@ -44,6 +47,8 @@ type AppMarketRecord = {
     active: boolean;
     closed: boolean;
     closed_at: string | null;
+    starts_at: string | null;
+    lock_at: string | null;
     winning_outcome_id: string | null;
     sort_order: number;
     synced_at: string;
@@ -64,7 +69,7 @@ const GAMMA_BASE_URL = "https://gamma-api.polymarket.com";
 const FIFA_WORLD_CUP_TAG_ID = "102232";
 const WORLD_CUP_2026_TAG_ID = "102350";
 
-export async function fetchPolymarketWorldCupEvents(limit = 80) {
+export async function fetchPolymarketWorldCupEvents(limit = 500) {
   const events = await Promise.all([
     fetchGammaEvents(FIFA_WORLD_CUP_TAG_ID, limit, false),
     fetchGammaEvents(WORLD_CUP_2026_TAG_ID, limit, false),
@@ -86,22 +91,10 @@ export async function fetchPolymarketWorldCupEvents(limit = 80) {
 
 export function buildAppMarketRecordsFromEvents(events: GammaEvent[]) {
   const records: AppMarketRecord[] = [];
-  const eventSlugsWithAdvanceMarket = new Set(
-    events
-      .filter(isMoreMarketsEvent)
-      .filter((event) =>
-        (event.markets ?? []).some((market) => market.question.endsWith(": Team to Advance")),
-      )
-      .map((event) => event.slug.replace("more-markets", "").replace(/-$/, "")),
-  );
 
   for (const event of events) {
     if (isMainMatchEvent(event)) {
-      if (eventSlugsWithAdvanceMarket.has(event.slug)) {
-        continue;
-      }
-
-      const record = toMatchFallbackRecord(event, 10 + records.length * 10);
+      const record = toMatchResultRecord(event, 10 + records.length * 10);
       if (record) records.push(record);
       continue;
     }
@@ -117,34 +110,37 @@ export function buildAppMarketRecordsFromEvents(events: GammaEvent[]) {
     }
   }
 
-  return records.slice(0, 45);
+  return records;
 }
 
-function toMatchFallbackRecord(event: GammaEvent, sortOrder: number): AppMarketRecord | null {
+function toMatchResultRecord(event: GammaEvent, sortOrder: number): AppMarketRecord | null {
   const teams = parseMatchTitle(event.title);
   if (!teams) return null;
 
   const status = eventStatus(event);
-  const outcomes = event.markets
+  const lockAt = event.endDate ?? null;
+  const rawOutcomes = event.markets
     ?.map((market) => {
       const yesPrice = getOutcomePrice(market, "Yes");
-      if (yesPrice <= 0) return null;
 
       return {
-        label: matchOutcomeLabel(market.groupItemTitle || market.question, teams),
+        label: matchResultLabel(market.groupItemTitle || market.question, teams),
         probability: yesPrice,
+        finalPrice: marketStatus(market, status).closed
+          ? getOutcomePrice(market, "Yes")
+          : null,
       };
     })
     .filter(
-      (outcome): outcome is { label: string; probability: number } =>
-        outcome !== null && outcome.label !== "引き分け",
+      (outcome): outcome is { label: string; probability: number; finalPrice: number | null } =>
+        outcome !== null && Boolean(outcome.label),
     );
 
-  if (!outcomes || outcomes.length < 2) return null;
+  if (!rawOutcomes || rawOutcomes.length < 2) return null;
 
-  const total = outcomes.reduce((sum, outcome) => sum + outcome.probability, 0);
+  const total = rawOutcomes.reduce((sum, outcome) => sum + outcome.probability, 0);
   const ordered = orderMatchOutcomes(
-    outcomes.map((outcome) => ({
+    rawOutcomes.map((outcome) => ({
       ...outcome,
       probability: total > 0 ? outcome.probability / total : outcome.probability,
     })),
@@ -156,8 +152,8 @@ function toMatchFallbackRecord(event: GammaEvent, sortOrder: number): AppMarketR
     market_id: id,
     label: outcome.label,
     probability: clampProbability(outcome.probability),
-    final_price: status.closed ? clampProbability(outcome.probability) : null,
-    winning: status.closed && outcome.probability >= 0.999,
+    final_price: outcome.finalPrice == null ? null : clampProbability(outcome.finalPrice),
+    winning: status.closed && outcome.finalPrice != null && outcome.finalPrice >= 0.999,
     side: outcomeSide(index),
     sort_order: index,
   }));
@@ -168,14 +164,16 @@ function toMatchFallbackRecord(event: GammaEvent, sortOrder: number): AppMarketR
       slug: event.slug,
       category: "match",
       code: `${teamCode(teams.home)}-${teamCode(teams.away)}`,
-      title: `${toJa(teams.home)} vs ${toJa(teams.away)}: 勝ち上がるのは？`,
-      note: "勝敗2択・引き分けなし",
+      title: `${toJa(teams.home)} vs ${toJa(teams.away)}: 試合結果は？`,
+      note: "試合結果・引き分けあり",
       volume_label: formatVolumeLabel(event.volume),
       source: "polymarket",
       polymarket_slug: event.slug,
       active: true,
       closed: status.closed,
       closed_at: status.closedAt,
+      starts_at: lockAt,
+      lock_at: lockAt,
       winning_outcome_id: winningOutcomeId(outcomeRows),
       sort_order: sortOrder,
       synced_at: new Date().toISOString(),
@@ -197,24 +195,6 @@ function toSelectedMoreMarketRecords(event: GammaEvent, baseSortOrder: number) {
     records.push(toTeamAdvanceRecord(advanceMarket, teams, baseSortOrder - 150));
   }
 
-  const wanted = (event.markets ?? []).filter((market) =>
-    isWantedDetailMarket(market.question, teams),
-  );
-
-  records.push(
-    ...wanted.slice(0, 6).map((market, index) =>
-      toTwoOutcomeRecord({
-        market,
-        id: `polymarket-market-${market.slug}`,
-        category: "special",
-        code: "DET",
-        title: translateMoreMarketQuestion(market.question, teams),
-        note: `${toJa(teams.home)} vs ${toJa(teams.away)} 詳細予測`,
-        sortOrder: baseSortOrder + index,
-      }),
-    ),
-  );
-
   return records;
 }
 
@@ -224,6 +204,7 @@ function toTeamAdvanceRecord(
   sortOrder: number,
 ): AppMarketRecord {
   const status = marketStatus(market);
+  const lockAt = market.endDate ?? null;
   const outcomes = parseGammaOutcomes(market, status.closed);
   const id = `polymarket-market-${market.slug}`;
   const outcomeRows = outcomes.map((outcome, index) => ({
@@ -251,6 +232,8 @@ function toTeamAdvanceRecord(
       active: true,
       closed: status.closed,
       closed_at: status.closedAt,
+      starts_at: lockAt,
+      lock_at: lockAt,
       winning_outcome_id: winningOutcomeId(outcomeRows),
       sort_order: sortOrder,
       synced_at: new Date().toISOString(),
@@ -302,58 +285,8 @@ function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketR
       active: true,
       closed: status.closed,
       closed_at: status.closedAt,
-      winning_outcome_id: winningOutcomeId(outcomeRows),
-      sort_order: sortOrder,
-      synced_at: new Date().toISOString(),
-    },
-    outcomes: outcomeRows,
-  };
-}
-
-function toTwoOutcomeRecord({
-  market,
-  id,
-  category,
-  code,
-  title,
-  note,
-  sortOrder,
-}: {
-  market: GammaMarket;
-  id: string;
-  category: "match" | "winner" | "special";
-  code: string;
-  title: string;
-  note: string;
-  sortOrder: number;
-}): AppMarketRecord {
-  const status = marketStatus(market);
-  const outcomes = parseGammaOutcomes(market, status.closed);
-  const outcomeRows = outcomes.map((outcome, index) => ({
-    id: `${id}-${index}`,
-    market_id: id,
-    label: translateOutcome(outcome.label),
-    probability: clampProbability(outcome.probability),
-    final_price: outcome.finalPrice,
-    winning: status.closed && outcome.finalPrice !== null && outcome.finalPrice >= 0.999,
-    side: outcomeSide(index),
-    sort_order: index,
-  }));
-
-  return {
-    market: {
-      id,
-      slug: market.slug,
-      category,
-      code,
-      title,
-      note,
-      volume_label: formatVolumeLabel(market.volumeNum ?? market.volume),
-      source: "polymarket",
-      polymarket_slug: market.slug,
-      active: true,
-      closed: status.closed,
-      closed_at: status.closedAt,
+      starts_at: null,
+      lock_at: null,
       winning_outcome_id: winningOutcomeId(outcomeRows),
       sort_order: sortOrder,
       synced_at: new Date().toISOString(),
@@ -363,7 +296,14 @@ function toTwoOutcomeRecord({
 }
 
 function isMainMatchEvent(event: GammaEvent) {
-  return /^.+ vs\. .+$/.test(event.title) && !event.title.includes(" - ");
+  return (
+    /^.+ vs\. .+$/.test(event.title) &&
+    !event.title.includes(" - ") &&
+    !event.title.includes("H2H") &&
+    !event.title.includes("Goal Contributions") &&
+    !event.title.includes("Goals") &&
+    !event.title.includes(" to Play ")
+  );
 }
 
 function isMoreMarketsEvent(event: GammaEvent) {
@@ -396,24 +336,37 @@ function parseGammaOutcomes(market: GammaMarket, closed = false) {
 }
 
 async function fetchGammaEvents(tagId: string, limit: number, closed: boolean) {
-  const url = new URL("/events", GAMMA_BASE_URL);
-  url.searchParams.set("active", "true");
-  url.searchParams.set("closed", String(closed));
-  url.searchParams.set("limit", String(limit));
-  url.searchParams.set("tag_id", tagId);
-  url.searchParams.set("order", "volume24hr");
-  url.searchParams.set("ascending", "false");
+  const pageSize = 100;
+  const events: GammaEvent[] = [];
 
-  const response = await fetch(url, {
-    next: { revalidate: 60 },
-    headers: { accept: "application/json" },
-  });
+  for (let offset = 0; offset < limit; offset += pageSize) {
+    const url = new URL("/events", GAMMA_BASE_URL);
+    url.searchParams.set("active", "true");
+    url.searchParams.set("closed", String(closed));
+    url.searchParams.set("limit", String(Math.min(pageSize, limit - offset)));
+    url.searchParams.set("offset", String(offset));
+    url.searchParams.set("tag_id", tagId);
+    url.searchParams.set("order", "volume24hr");
+    url.searchParams.set("ascending", "false");
 
-  if (!response.ok) {
-    throw new Error(`Polymarket API error: ${response.status}`);
+    const response = await fetch(url, {
+      next: { revalidate: 60 },
+      headers: { accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Polymarket API error: ${response.status}`);
+    }
+
+    const page = (await response.json()) as GammaEvent[];
+    events.push(...page);
+
+    if (page.length < pageSize) {
+      break;
+    }
   }
 
-  return (await response.json()) as GammaEvent[];
+  return events;
 }
 
 function getOutcomePrice(market: GammaMarket, label: string) {
@@ -456,15 +409,15 @@ function parseMatchTitle(title: string) {
   return { home: match[1], away: match[2] };
 }
 
-function matchOutcomeLabel(value: string, teams: { home: string; away: string }) {
+function matchResultLabel(value: string, teams: { home: string; away: string }) {
   if (value.includes("Draw")) return "引き分け";
-  if (value === teams.home) return `${toJa(teams.home)}勝利`;
-  if (value === teams.away) return `${toJa(teams.away)}勝利`;
-  return toJa(value);
+  if (value.includes(teams.home) || value === teams.home) return `${toJa(teams.home)}勝利`;
+  if (value.includes(teams.away) || value === teams.away) return `${toJa(teams.away)}勝利`;
+  return "";
 }
 
 function orderMatchOutcomes(
-  outcomes: Array<{ label: string; probability: number }>,
+  outcomes: Array<{ label: string; probability: number; finalPrice?: number | null }>,
   teams: { home: string; away: string },
 ) {
   const home = `${toJa(teams.home)}勝利`;
@@ -473,34 +426,6 @@ function orderMatchOutcomes(
   const order = [home, draw, away];
 
   return outcomes.sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
-}
-
-function translateMoreMarketQuestion(question: string, teams: { home: string; away: string }) {
-  const prefix = `${teams.home} vs. ${teams.away}: `;
-  const body = question.replace(prefix, "");
-  const matchLabel = `${toJa(teams.home)} vs ${toJa(teams.away)}`;
-
-  if (body === "Both Teams to Score") return `${matchLabel}: 両チーム得点する？`;
-  if (body === "1st Half O/U 0.5") return `${matchLabel}: 前半に1点以上入る？`;
-  if (body === "O/U 2.5") return `${matchLabel}: 合計3点以上？`;
-  if (body === "Will the Match Go to a Penalty Shootout?") return `${matchLabel}: PK戦になる？`;
-  if (body === `${teams.home} O/U 1.5`) return `${toJa(teams.home)}は2点以上取る？`;
-  if (body === `${teams.away} O/U 0.5`) return `${toJa(teams.away)}は得点する？`;
-
-  return `${matchLabel}: ${body}`;
-}
-
-function isWantedDetailMarket(question: string, teams: { home: string; away: string }) {
-  const body = question.replace(`${teams.home} vs. ${teams.away}: `, "");
-
-  return [
-    "Both Teams to Score",
-    "O/U 2.5",
-    "1st Half O/U 0.5",
-    "Will the Match Go to a Penalty Shootout?",
-    `${teams.home} O/U 1.5`,
-    `${teams.away} O/U 0.5`,
-  ].includes(body);
 }
 
 function translateFutureTitle(title: string) {
@@ -552,14 +477,6 @@ function futureCode(slug: string) {
   return "WC";
 }
 
-function translateOutcome(label: string) {
-  if (label === "Yes") return "YES";
-  if (label === "No") return "NO";
-  if (label === "Over") return "YES";
-  if (label === "Under") return "NO";
-  return label;
-}
-
 function toJa(value: string) {
   const trimmed = value.trim();
   const nonPlayerName = nameMap[trimmed] ?? countryToJapanese(trimmed);
@@ -583,19 +500,7 @@ function clampProbability(probability: number) {
 }
 
 function formatVolumeLabel(volume?: number | string | null) {
-  const value = Number(volume ?? 0);
-
-  if (!Number.isFinite(value) || value <= 0) return "取引額 -";
-  if (value >= 1_000_000_000) return `取引額 ${roundOneDecimal(value / 1_000_000_000)}Bドル`;
-  if (value >= 1_000_000) return `取引額 ${roundOneDecimal(value / 1_000_000)}Mドル`;
-  if (value >= 1_000) return `取引額 ${Math.round(value / 1_000)}Kドル`;
-  return `取引額 ${Math.round(value)}ドル`;
-}
-
-function roundOneDecimal(value: number) {
-  const rounded = Math.round(value * 10) / 10;
-
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return formatUsdVolumeAsYen(volume);
 }
 
 function safeJsonArray(value?: string) {

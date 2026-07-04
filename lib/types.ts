@@ -21,6 +21,8 @@ export type Market = {
   polymarketSlug?: string;
   closed?: boolean;
   closedAt?: string;
+  startsAt?: string;
+  lockAt?: string;
   winningOutcomeId?: string;
   outcomes: Outcome[];
 };
@@ -38,6 +40,13 @@ export type UserProfile = {
   id: string;
   displayName: string;
   points: number;
+  periodicBonusClaimedAt?: string;
+};
+
+export type RankingItem = {
+  id: string;
+  displayName: string;
+  points: number;
 };
 
 export type PredictionHistoryItem = {
@@ -46,6 +55,7 @@ export type PredictionHistoryItem = {
   outcomeLabel: string;
   stake: number;
   odds: number;
+  probabilityAtPrediction: number;
   status: "open" | "won" | "lost" | "void";
   payout?: number;
   settledAt?: string;

@@ -1,10 +1,18 @@
 import { initialMarkets } from "@/lib/mock-markets";
+import { getOrCreateProfileForUser } from "@/lib/auth-profile";
 import { createServerSupabaseClient, hasSupabaseConfig } from "@/lib/supabase";
-import type { Market, MarketCategory, PredictionHistoryItem, UserProfile } from "@/lib/types";
+import type {
+  Market,
+  MarketCategory,
+  PredictionHistoryItem,
+  RankingItem,
+  UserProfile,
+} from "@/lib/types";
+import { localizeVolumeLabel } from "@/lib/volume";
 
 const DEMO_EMAIL = "demo@yosoku-cup.local";
 const MARKET_SELECT =
-  "id, slug, category, code, title, note, volume_label, source, polymarket_slug, closed, closed_at, winning_outcome_id, outcomes!outcomes_market_id_fkey(id, label, probability, side, final_price, winning)";
+  "id, slug, category, code, title, note, volume_label, source, polymarket_slug, closed, closed_at, starts_at, lock_at, winning_outcome_id, outcomes!outcomes_market_id_fkey(id, label, probability, side, final_price, winning)";
 
 type MarketRecord = {
   id: string;
@@ -18,6 +26,8 @@ type MarketRecord = {
   polymarket_slug: string | null;
   closed: boolean;
   closed_at: string | null;
+  starts_at: string | null;
+  lock_at: string | null;
   winning_outcome_id: string | null;
   outcomes: Array<{
     id: string;
@@ -61,11 +71,13 @@ export async function getHomeMarkets(): Promise<Market[]> {
       code: market.code,
       title: market.title,
       note: market.note,
-      volumeLabel: market.volume_label,
+      volumeLabel: localizeVolumeLabel(market.volume_label),
       source: market.source as Market["source"],
       polymarketSlug: market.polymarket_slug ?? undefined,
       closed: market.closed,
       closedAt: market.closed_at ?? undefined,
+      startsAt: market.starts_at ?? undefined,
+      lockAt: market.lock_at ?? undefined,
       winningOutcomeId: market.winning_outcome_id ?? undefined,
       outcomes: market.outcomes.map((outcome) => ({
         id: outcome.id,
@@ -108,11 +120,13 @@ export async function getClosedMarkets(limit = 80): Promise<Market[]> {
       code: market.code,
       title: market.title,
       note: market.note,
-      volumeLabel: market.volume_label,
+      volumeLabel: localizeVolumeLabel(market.volume_label),
       source: market.source as Market["source"],
       polymarketSlug: market.polymarket_slug ?? undefined,
       closed: market.closed,
       closedAt: market.closed_at ?? undefined,
+      startsAt: market.starts_at ?? undefined,
+      lockAt: market.lock_at ?? undefined,
       winningOutcomeId: market.winning_outcome_id ?? undefined,
       outcomes: market.outcomes.map((outcome) => ({
         id: outcome.id,
@@ -169,43 +183,14 @@ export async function getOrCreateDemoProfile(
     userId = authData.user.id;
   }
 
-  const { data: existingProfile, error: existingProfileError } = await supabase
-    .from("profiles")
-    .select("id, points")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (existingProfileError) {
-    throw existingProfileError;
-  }
-
-  const { data: profile, error: profileError } = existingProfile
-    ? { data: existingProfile, error: null }
-    : await supabase
-    .from("profiles")
-    .insert({
-      id: userId,
-      display_name: "あなた",
-      points: 10000,
-    })
-    .select("id, points")
-    .single();
-
-  if (profileError || !profile) {
-    throw profileError ?? new Error("Demo profile could not be created.");
-  }
-
-  return {
-    id: profile.id,
-    displayName: "あなた",
-    points: profile.points,
-  };
+  return getOrCreateProfileForUser(supabase, userId, "あなた");
 }
 
 type PredictionRecord = {
   id: string;
   stake: number;
   odds: number;
+  probability_at_prediction: number;
   status: "open" | "won" | "lost" | "void";
   payout: number | null;
   settled_at: string | null;
@@ -218,20 +203,23 @@ function firstRelation<T>(relation: T | T[] | null) {
   return Array.isArray(relation) ? relation[0] : relation;
 }
 
-export async function getDemoPredictionHistory(): Promise<PredictionHistoryItem[]> {
+export async function getDemoPredictionHistory(
+  profileId?: string,
+  limit = 8,
+): Promise<PredictionHistoryItem[]> {
   if (!hasSupabaseConfig()) {
     return [];
   }
 
   try {
     const supabase = createServerSupabaseClient({ admin: true });
-    const profile = await getOrCreateDemoProfile(supabase);
+    const activeProfileId = profileId ?? (await getOrCreateDemoProfile(supabase)).id;
     const { data, error } = await supabase
       .from("predictions")
-      .select("id, stake, odds, status, payout, settled_at, created_at, markets!predictions_market_id_fkey(title), outcomes!predictions_outcome_id_fkey(label)")
-      .eq("profile_id", profile.id)
+      .select("id, stake, odds, probability_at_prediction, status, payout, settled_at, created_at, markets!predictions_market_id_fkey(title), outcomes!predictions_outcome_id_fkey(label)")
+      .eq("profile_id", activeProfileId)
       .order("created_at", { ascending: false })
-      .limit(8);
+      .limit(limit);
 
     if (error) throw error;
 
@@ -245,12 +233,38 @@ export async function getDemoPredictionHistory(): Promise<PredictionHistoryItem[
         outcomeLabel: outcome?.label ?? "不明な選択肢",
         stake: prediction.stake,
         odds: prediction.odds,
+        probabilityAtPrediction: prediction.probability_at_prediction,
         status: prediction.status,
         payout: prediction.payout ?? undefined,
         settledAt: prediction.settled_at ?? undefined,
         createdAt: prediction.created_at,
       };
     });
+  } catch {
+    return [];
+  }
+}
+
+export async function getRanking(limit = 50): Promise<RankingItem[]> {
+  if (!hasSupabaseConfig()) {
+    return [];
+  }
+
+  try {
+    const supabase = createServerSupabaseClient({ admin: true });
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, display_name, points")
+      .order("points", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    return (data ?? []).map((profile) => ({
+      id: profile.id,
+      displayName: profile.display_name || `ゲスト ${profile.id.slice(0, 4)}`,
+      points: profile.points,
+    }));
   } catch {
     return [];
   }

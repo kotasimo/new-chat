@@ -7,8 +7,18 @@ import { createServerSupabaseClient, hasSupabaseConfig } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
+export async function GET(request: Request) {
+  return syncPolymarket(request, "cron");
+}
+
 export async function POST(request: Request) {
-  const syncSecret = process.env.SYNC_SECRET;
+  return syncPolymarket(request, "manual");
+}
+
+async function syncPolymarket(request: Request, mode: "cron" | "manual") {
+  const syncSecret = mode === "cron"
+    ? process.env.CRON_SECRET ?? process.env.SYNC_SECRET
+    : process.env.SYNC_SECRET;
   const authorization = request.headers.get("authorization");
 
   if (syncSecret && authorization !== `Bearer ${syncSecret}`) {
@@ -25,10 +35,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = createServerSupabaseClient({ admin: true });
-  const gammaEvents = await fetchPolymarketWorldCupEvents(80);
-  const syncedAt = new Date().toISOString();
-  const apiRecords = buildAppMarketRecordsFromEvents(gammaEvents);
+  try {
+    const supabase = createServerSupabaseClient({ admin: true });
+    const gammaEvents = await fetchPolymarketWorldCupEvents(500);
+    const syncedAt = new Date().toISOString();
+    const apiRecords = buildAppMarketRecordsFromEvents(gammaEvents);
 
   const records = apiRecords.map((record) => ({
     market: { ...record.market, synced_at: syncedAt },
@@ -53,21 +64,13 @@ export async function POST(request: Request) {
     winning_outcome_id: null,
   }));
 
-  const { error: marketError } = await supabase
-    .from("markets")
-    .upsert(marketRows, { onConflict: "id" });
-
-  if (marketError) {
-    return NextResponse.json({ error: marketError.message }, { status: 500 });
-  }
-
-  const { error: outcomeError } = await supabase
-    .from("outcomes")
-    .upsert(recordsForUpsert.flatMap((record) => record.outcomes), { onConflict: "id" });
-
-  if (outcomeError) {
-    return NextResponse.json({ error: outcomeError.message }, { status: 500 });
-  }
+    await upsertInChunks(supabase, "markets", marketRows, 100);
+    await upsertInChunks(
+      supabase,
+      "outcomes",
+      recordsForUpsert.flatMap((record) => record.outcomes),
+      250,
+    );
 
   const resolvedMarketRows = recordsForUpsert
     .filter((record) => record.market.closed && record.market.winning_outcome_id)
@@ -96,15 +99,24 @@ export async function POST(request: Request) {
     ),
   );
 
-  return NextResponse.json({
-    ok: true,
-    imported: records.length,
-    apiMarkets: apiRecords.length,
-    manualMarkets: 0,
-    settledPredictions: settlement.settled,
-    paidOutPoints: settlement.paidOutPoints,
-    syncedAt,
-  });
+    return NextResponse.json({
+      ok: true,
+      imported: records.length,
+      apiMarkets: apiRecords.length,
+      manualMarkets: 0,
+      settledPredictions: settlement.settled,
+      paidOutPoints: settlement.paidOutPoints,
+      mode,
+      syncedAt,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : JSON.stringify(error),
+      },
+      { status: 500 },
+    );
+  }
 }
 
 async function getExistingOutcomeProbabilities(
@@ -113,8 +125,8 @@ async function getExistingOutcomeProbabilities(
 ) {
   const probabilities = new Map<string, number>();
 
-  for (let index = 0; index < outcomeIds.length; index += 1000) {
-    const chunk = outcomeIds.slice(index, index + 1000);
+  for (let index = 0; index < outcomeIds.length; index += 20) {
+    const chunk = outcomeIds.slice(index, index + 20);
     if (!chunk.length) continue;
 
     const { data, error } = await supabase
@@ -123,7 +135,7 @@ async function getExistingOutcomeProbabilities(
       .in("id", chunk);
 
     if (error) {
-      throw error;
+      throw new Error(`get existing outcome probabilities: ${error.message}`);
     }
 
     for (const outcome of data ?? []) {
@@ -134,6 +146,26 @@ async function getExistingOutcomeProbabilities(
   return probabilities;
 }
 
+async function upsertInChunks(
+  supabase: ReturnType<typeof createServerSupabaseClient>,
+  table: "markets" | "outcomes",
+  rows: Array<Record<string, unknown>>,
+  size: number,
+) {
+  for (let index = 0; index < rows.length; index += size) {
+    const chunk = rows.slice(index, index + size);
+    if (!chunk.length) continue;
+
+    const { error } = await supabase
+      .from(table)
+      .upsert(chunk, { onConflict: "id" });
+
+    if (error) {
+      throw new Error(`upsert ${table}: ${error.message}`);
+    }
+  }
+}
+
 async function settleResolvedPredictions(
   supabase: ReturnType<typeof createServerSupabaseClient>,
   winningOutcomeByMarketId: Map<string, string>,
@@ -142,14 +174,22 @@ async function settleResolvedPredictions(
     return { settled: 0, paidOutPoints: 0 };
   }
 
-  const { data: predictions, error } = await supabase
-    .from("predictions")
-    .select("id, profile_id, market_id, outcome_id, stake, odds")
-    .eq("status", "open")
-    .in("market_id", Array.from(winningOutcomeByMarketId.keys()));
+  const predictions = [];
+  const marketIds = Array.from(winningOutcomeByMarketId.keys());
 
-  if (error) {
-    throw error;
+  for (let index = 0; index < marketIds.length; index += 20) {
+    const chunk = marketIds.slice(index, index + 20);
+    const { data, error } = await supabase
+      .from("predictions")
+      .select("id, profile_id, market_id, outcome_id, stake, odds")
+      .eq("status", "open")
+      .in("market_id", chunk);
+
+    if (error) {
+      throw new Error(`select open predictions: ${error.message}`);
+    }
+
+    predictions.push(...(data ?? []));
   }
 
   let settled = 0;
@@ -158,50 +198,26 @@ async function settleResolvedPredictions(
 
   for (const prediction of predictions ?? []) {
     const winningOutcomeId = winningOutcomeByMarketId.get(prediction.market_id);
-    const won = prediction.outcome_id === winningOutcomeId;
-    const payout = won ? Math.round(prediction.stake * prediction.odds) : 0;
-
-    const { error: predictionError } = await supabase
-      .from("predictions")
-      .update({
-        status: won ? "won" : "lost",
-        payout,
-        settled_at: settledAt,
-      })
-      .eq("id", prediction.id)
-      .eq("status", "open");
-
-    if (predictionError) {
-      throw predictionError;
+    if (!winningOutcomeId) {
+      continue;
     }
 
-    if (won && payout > 0) {
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("points")
-        .eq("id", prediction.profile_id)
-        .single();
+    const { data, error } = await supabase.rpc("settle_prediction_result", {
+      target_prediction_id: prediction.id,
+      target_winning_outcome_id: winningOutcomeId,
+      settled_timestamp: settledAt,
+    });
 
-      if (profileError) {
-        throw profileError;
-      }
-
-      const { error: pointsError } = await supabase
-        .from("profiles")
-        .update({
-          points: profile.points + payout,
-          updated_at: settledAt,
-        })
-        .eq("id", prediction.profile_id);
-
-      if (pointsError) {
-        throw pointsError;
-      }
-
-      paidOutPoints += payout;
+    if (error) {
+      throw new Error(`settle prediction ${prediction.id}: ${error.message}`);
     }
 
-    settled += 1;
+    const result = Array.isArray(data) ? data[0] : data;
+
+    if (result?.settled) {
+      settled += 1;
+      paidOutPoints += Number(result.payout ?? 0);
+    }
   }
 
   return { settled, paidOutPoints };
