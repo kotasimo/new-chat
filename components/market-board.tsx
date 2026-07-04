@@ -195,30 +195,6 @@ export function MarketBoard({
     }
   }
 
-  async function shareSite(event: MouseEvent<HTMLButtonElement>) {
-    event.stopPropagation();
-
-    const shareData = {
-      title: "Yosoku Cup",
-      text: "世界の予測オッズで、無料で遊ぶ。Yosoku Cup",
-      url: window.location.origin,
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch {
-        // Sharing can be cancelled by the user.
-      }
-      return;
-    }
-
-    const shareUrl = new URL("https://twitter.com/intent/tweet");
-    shareUrl.searchParams.set("text", shareData.text);
-    shareUrl.searchParams.set("url", shareData.url);
-    window.open(shareUrl.toString(), "_blank", "noopener,noreferrer");
-  }
-
   return (
     <div className="board-layout" onClick={clearSelectionOnOutsideClick}>
       <main className="main-content">
@@ -269,9 +245,6 @@ export function MarketBoard({
             </p>
           </div>
           <div className="hero-actions">
-            <button type="button" onClick={shareSite}>
-              共有する
-            </button>
             <Link className="hero-guide-link" href="/guide">
               遊び方を見る
             </Link>
