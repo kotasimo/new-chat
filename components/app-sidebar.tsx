@@ -115,9 +115,9 @@ export function AppSidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="brand">
+      <Link className="brand" href="/" aria-label="予測する画面へ戻る">
         <div className="brand-mark">Y</div>
-      </div>
+      </Link>
       <div className="sidebar-balance" aria-label="保有ポイント">
         {points === null ? "確認中" : `${points.toLocaleString("ja-JP")}pt`}
       </div>
