@@ -49,15 +49,24 @@ async function syncPolymarket(request: Request, mode: "cron" | "manual") {
     supabase,
     records.flatMap((record) => record.outcomes.map((outcome) => outcome.id)),
   );
-  const recordsForUpsert = records.map((record) => ({
-    market: record.market,
-    outcomes: record.outcomes.map((outcome) => ({
-      ...outcome,
-      probability: record.market.closed
-        ? existingOutcomeProbabilityById.get(outcome.id) ?? outcome.probability
-        : outcome.probability,
-    })),
-  }));
+  const syncedAtMs = new Date(syncedAt).getTime();
+  const recordsForUpsert = records.map((record) => {
+    const lockAtMs = record.market.lock_at
+      ? new Date(record.market.lock_at).getTime()
+      : Number.NaN;
+    const shouldFreezeProbability = record.market.closed ||
+      (Number.isFinite(lockAtMs) && lockAtMs <= syncedAtMs);
+
+    return {
+      market: record.market,
+      outcomes: record.outcomes.map((outcome) => ({
+        ...outcome,
+        probability: shouldFreezeProbability
+          ? existingOutcomeProbabilityById.get(outcome.id) ?? outcome.probability
+          : outcome.probability,
+      })),
+    };
+  });
 
   const marketRows = recordsForUpsert.map((record) => ({
     ...record.market,

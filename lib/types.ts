@@ -23,6 +23,7 @@ export type Market = {
   closedAt?: string;
   startsAt?: string;
   lockAt?: string;
+  syncedAt?: string;
   winningOutcomeId?: string;
   outcomes: Outcome[];
 };

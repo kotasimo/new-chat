@@ -433,9 +433,20 @@ button {
   font-size: 20px;
 }
 
-.section-head span {
+.section-head > div {
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+}
+
+.section-head span,
+.section-head time {
   color: var(--muted);
   font-size: 13px;
+}
+
+.section-head time {
+  font-size: 12px;
 }
 
 .market-list {

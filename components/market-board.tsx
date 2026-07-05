@@ -144,6 +144,16 @@ export function MarketBoard({
       return 0;
     });
   }, [activeTab, markets, now, searchQuery]);
+  const lastSyncedAt = useMemo(() => {
+    const latest = markets.reduce((max, market) => {
+      if (!market.syncedAt) return max;
+
+      const time = new Date(market.syncedAt).getTime();
+      return Number.isFinite(time) && time > max ? time : max;
+    }, 0);
+
+    return latest ? new Date(latest).toISOString() : "";
+  }, [markets]);
 
   function clearSelectionOnOutsideClick(event: MouseEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement;
@@ -284,7 +294,14 @@ export function MarketBoard({
 
         <div className="section-head">
           <h2>注目マーケット</h2>
-          <span>倍率は予測確率から自動換算</span>
+          <div>
+            <span>倍率は予測確率から自動換算</span>
+            {lastSyncedAt ? (
+              <time dateTime={lastSyncedAt}>
+                最終同期 {formatSyncTime(lastSyncedAt)}
+              </time>
+            ) : null}
+          </div>
         </div>
 
         <div className="market-list">
@@ -328,4 +345,18 @@ function isWaitingResult(market: Market, now: number | null) {
 
   const lockTime = new Date(market.lockAt).getTime();
   return Number.isFinite(lockTime) && lockTime <= now;
+}
+
+function formatSyncTime(value: string) {
+  const date = new Date(value);
+
+  if (!Number.isFinite(date.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 }

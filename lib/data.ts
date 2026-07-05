@@ -12,7 +12,7 @@ import { localizeVolumeLabel } from "@/lib/volume";
 
 const DEMO_EMAIL = "demo@yosoku-cup.local";
 const MARKET_SELECT =
-  "id, slug, category, code, title, note, volume_label, source, polymarket_slug, closed, closed_at, starts_at, lock_at, winning_outcome_id, outcomes!outcomes_market_id_fkey(id, label, probability, side, final_price, winning)";
+  "id, slug, category, code, title, note, volume_label, source, polymarket_slug, closed, closed_at, starts_at, lock_at, synced_at, winning_outcome_id, outcomes!outcomes_market_id_fkey(id, label, probability, side, final_price, winning)";
 
 type MarketRecord = {
   id: string;
@@ -28,6 +28,7 @@ type MarketRecord = {
   closed_at: string | null;
   starts_at: string | null;
   lock_at: string | null;
+  synced_at: string | null;
   winning_outcome_id: string | null;
   outcomes: Array<{
     id: string;
@@ -78,6 +79,7 @@ export async function getHomeMarkets(): Promise<Market[]> {
       closedAt: market.closed_at ?? undefined,
       startsAt: market.starts_at ?? undefined,
       lockAt: market.lock_at ?? undefined,
+      syncedAt: market.synced_at ?? undefined,
       winningOutcomeId: market.winning_outcome_id ?? undefined,
       outcomes: market.outcomes.map((outcome) => ({
         id: outcome.id,
@@ -127,6 +129,7 @@ export async function getClosedMarkets(limit = 80): Promise<Market[]> {
       closedAt: market.closed_at ?? undefined,
       startsAt: market.starts_at ?? undefined,
       lockAt: market.lock_at ?? undefined,
+      syncedAt: market.synced_at ?? undefined,
       winningOutcomeId: market.winning_outcome_id ?? undefined,
       outcomes: market.outcomes.map((outcome) => ({
         id: outcome.id,
