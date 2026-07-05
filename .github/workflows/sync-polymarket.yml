@@ -10,12 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Check required secrets
+        run: |
+          test -n "${APP_URL}" || (echo "APP_URL secret is missing" && exit 1)
+          test -n "${SYNC_SECRET}" || (echo "SYNC_SECRET secret is missing" && exit 1)
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SYNC_SECRET: ${{ secrets.SYNC_SECRET }}
+
       - name: Call sync endpoint
         env:
           APP_URL: ${{ secrets.APP_URL }}
           SYNC_SECRET: ${{ secrets.SYNC_SECRET }}
         run: |
-          curl --fail --show-error --silent \
+          curl --fail-with-body --show-error \
             --request POST \
             --header "Authorization: Bearer ${SYNC_SECRET}" \
             "${APP_URL}/api/sync/polymarket"
