@@ -1002,7 +1002,7 @@ button {
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 11px minmax(0, 1fr) auto auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 9px 12px;
   width: 100%;
@@ -1037,10 +1037,16 @@ button {
 }
 
 .outcome-dot {
+  justify-self: center;
   width: 11px;
   height: 11px;
   border-radius: 3px;
   background: var(--outcome-color);
+}
+
+.crest-image {
+  flex: 0 0 auto;
+  object-fit: contain;
 }
 
 .outcome-label {

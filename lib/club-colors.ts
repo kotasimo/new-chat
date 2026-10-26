@@ -107,15 +107,18 @@ export const neutralOutcomeColor = "#9aa3a0";
 const clubNames = Object.keys(clubColors).sort((a, b) => b.length - a.length);
 
 /**
- * "チェルシー勝利" のように接尾辞が付いた選択肢からクラブ色を引く。
+ * "チェルシー勝利" のように接尾辞が付いた選択肢からクラブ名を取り出す。
  * 「マンチェスター・C」と「マンチェスター・U」を取り違えないよう、長い名前から照合する。
  */
-export function clubColorForLabel(label: string) {
+export function matchClubName(label: string) {
   const trimmed = label.trim();
-  const direct = clubColors[trimmed];
-  if (direct) return direct;
+  if (clubColors[trimmed]) return trimmed;
 
-  const matched = clubNames.find((name) => trimmed.includes(name));
+  return clubNames.find((name) => trimmed.includes(name));
+}
+
+export function clubColorForLabel(label: string) {
+  const matched = matchClubName(label);
 
   return matched ? clubColors[matched] : undefined;
 }

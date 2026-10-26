@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
-import { clubColorForLabel, neutralOutcomeColor } from "@/lib/club-colors";
+import { clubColors, matchClubName, neutralOutcomeColor } from "@/lib/club-colors";
+import { clubCrests } from "@/lib/crests";
 import { leagueLabel } from "@/lib/leagues";
 import { formatOddsValue, formatProbability, probabilityToOdds } from "@/lib/odds";
 import type { Market, Outcome, SelectedPrediction } from "@/lib/types";
@@ -88,20 +90,18 @@ function FixtureMarket({
   onSelect,
 }: FixtureMarketProps) {
   const [homeCode, awayCode] = splitCode(market.code);
-  const homeColor = clubColorForLabel(fixture.home) ?? neutralOutcomeColor;
-  const awayColor = clubColorForLabel(fixture.away) ?? neutralOutcomeColor;
 
   return (
     <>
       <div className="fixture">
         <div className="fixture-team">
-          <Crest code={homeCode} color={homeColor} />
+          <Crest name={fixture.home} code={homeCode} size={30} />
           <strong>{fixture.home}</strong>
         </div>
         <span className="fixture-vs">vs</span>
         <div className="fixture-team away">
           <strong>{fixture.away}</strong>
-          <Crest code={awayCode} color={awayColor} />
+          <Crest name={fixture.away} code={awayCode} size={30} />
         </div>
       </div>
 
@@ -150,7 +150,7 @@ function ListMarket({ market, locked, selectedOutcomeId, onSelect }: ListMarketP
             key={outcome.id}
             market={market}
             outcome={outcome}
-            color={clubColorForLabel(outcome.label) ?? rankColor(index, sorted.length)}
+            color={outcomeColor(outcome.label, index, sorted.length)}
             selected={selectedOutcomeId === outcome.id}
             disabled={locked}
             onSelect={onSelect}
@@ -228,7 +228,7 @@ function OutcomeRow({ market, outcome, color, selected, disabled, onSelect }: Pi
         onSelect(toPrediction(market, outcome, odds));
       }}
     >
-      <span className="outcome-dot" aria-hidden="true" />
+      <Crest name={outcome.label} code="" size={22} />
       <strong className="outcome-label">{outcome.label}</strong>
       <span className="outcome-probability">{formatProbability(outcome.probability)}</span>
       <span className="outcome-odds">
@@ -244,9 +244,37 @@ function OutcomeRow({ market, outcome, color, selected, disabled, onSelect }: Pi
   );
 }
 
-function Crest({ code, color }: { code: string; color: string }) {
+/** エンブレムが手元にあれば使い、無いクラブ（J2以下や選手名）は色付きの略号に戻す。 */
+function Crest({ name, code, size }: { name: string; code: string; size: number }) {
+  const club = matchClubName(name);
+  const crest = club ? clubCrests[club] : undefined;
+
+  if (crest) {
+    return (
+      <Image
+        className="crest-image"
+        src={crest}
+        alt=""
+        width={size}
+        height={size}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
+  const color = (club && clubColors[club]) || neutralOutcomeColor;
+
+  // 略号を持たない一覧の行は、丸を空のまま出すより小さな点のほうが収まりがいい。
+  if (!code) {
+    return <span className="outcome-dot" style={{ background: color }} aria-hidden="true" />;
+  }
+
   return (
-    <span className="crest" style={{ background: color }} aria-hidden="true">
+    <span
+      className="crest"
+      style={{ background: color, width: size, height: size }}
+      aria-hidden="true"
+    >
       {code}
     </span>
   );
@@ -280,8 +308,8 @@ function splitCode(code: string): [string, string] {
 }
 
 function fixtureOutcomeColor(label: string, index: number, count: number) {
-  const club = clubColorForLabel(label);
-  if (club) return club;
+  const club = matchClubName(label);
+  if (club) return clubColors[club];
 
   // Yes / No の市場は「起きる」側だけ色を付けて、起きない側は無彩色にする。
   if (count === 2 && index === 0) return "#16a06b";
@@ -290,7 +318,10 @@ function fixtureOutcomeColor(label: string, index: number, count: number) {
 }
 
 // クラブ名が付かない選択肢（選手名など）は、人気順を緑の濃淡で表す。
-function rankColor(index: number, count: number) {
+function outcomeColor(label: string, index: number, count: number) {
+  const club = matchClubName(label);
+  if (club) return clubColors[club];
+
   const t = count <= 1 ? 0 : index / (count - 1);
 
   return `hsl(162 46% ${30 + t * 46}%)`;
