@@ -54,7 +54,10 @@ curl -X POST -H "authorization: Bearer $SYNC_SECRET" "http://127.0.0.1:3000/api/
 
 ## GitHub Actions で定期同期
 
-`.github/workflows/sync-polymarket.yml` で、30分ごとに本番の同期APIを呼びます。
+`.github/workflows/sync-polymarket.yml` で、2時間おきに本番の同期APIを呼びます。
+
+5リーグ分で2分ほどかかります。privateリポジトリはActionsの無料枠が月2000分なので、
+これ以上間隔を詰めると枠を使い切ります。`vercel.json` のcronも1日1回同じAPIを呼びます。
 
 GitHub リポジトリの Settings > Secrets and variables > Actions > Repository secrets に以下を入れます。
 

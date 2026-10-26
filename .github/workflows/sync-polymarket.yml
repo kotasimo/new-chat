@@ -3,12 +3,13 @@ name: Sync Polymarket
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/30 * * * *"
+    # privateリポジトリでActionsの無料枠が月2000分なので、2時間おきに抑えている。
+    - cron: "0 */2 * * *"
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Check required secrets
         run: |
