@@ -49,6 +49,8 @@ type FutureEventConfig = {
   title: string;
   category: "winner" | "special";
   code: string;
+  // 日付や勝点のように、クラブ名でも選手名でもない選択肢を持つイベント用。
+  label?: (value: string) => string;
 };
 
 type AppMarketRecord = {
@@ -127,6 +129,12 @@ export function buildAppMarketRecordsFromEvents(events: GammaEvent[]) {
 
     if (isMoreMarketsEvent(event)) {
       records.push(...toSelectedMoreMarketRecords(event, 200 + records.length * 10));
+      continue;
+    }
+
+    if (binaryEvents[event.slug]) {
+      const record = toBinaryEventRecord(event, 500 + records.length * 10);
+      if (record) records.push(record);
       continue;
     }
 
@@ -283,7 +291,7 @@ function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketR
       finalPrice: marketStatus(market, status).closed
         ? getOutcomePrice(market, "Yes")
         : null,
-      label: toJa(market.groupItemTitle || extractFutureItem(market.question)),
+      label: futureOutcomeLabel(market, config),
       placeholder: isPlaceholderMarket(market),
     }))
     .filter((item) => item.probability > 0.001 && item.label && !item.placeholder)
@@ -291,6 +299,11 @@ function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketR
     .slice(0, 10);
 
   if (topMarkets.length < 2) return null;
+
+  // 締切つきのイベントは「いつまでに起きるか」なので、確率順ではなく早い締切から並べる。
+  if (config.label === deadlineLabel) {
+    topMarkets.sort((a, b) => a.probability - b.probability);
+  }
 
   const id = `polymarket-event-${event.slug}`;
   const outcomeRows = topMarkets.map((item, index) => ({
@@ -312,6 +325,52 @@ function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketR
       code: config.code,
       title: config.title,
       note: "Polymarketイベントを選択肢に整理",
+      volume_label: formatVolumeLabel(event.volume),
+      source: "polymarket",
+      polymarket_slug: event.slug,
+      active: true,
+      closed: status.closed,
+      closed_at: status.closedAt,
+      starts_at: null,
+      lock_at: null,
+      winning_outcome_id: winningOutcomeId(outcomeRows),
+      sort_order: sortOrder,
+      synced_at: new Date().toISOString(),
+    },
+    outcomes: outcomeRows,
+  };
+}
+
+// 「〜する？」をYes/Noひとつで聞くネタ寄りのイベント。選択肢が分かれていないので別扱いにする。
+function toBinaryEventRecord(event: GammaEvent, sortOrder: number): AppMarketRecord | null {
+  const config = binaryEvents[event.slug];
+  const market = event.markets?.[0];
+  if (!config || !market || isPlaceholderMarket(market)) return null;
+
+  const status = marketStatus(market, eventStatus(event));
+  const outcomes = parseGammaOutcomes(market, status.closed);
+  const id = `polymarket-event-${event.slug}`;
+  const outcomeRows = outcomes.map((outcome, index) => ({
+    id: `${id}-${index}`,
+    market_id: id,
+    label: toJa(outcome.label),
+    probability: clampProbability(outcome.probability),
+    final_price: outcome.finalPrice,
+    winning: status.closed && outcome.finalPrice !== null && outcome.finalPrice >= 0.999,
+    side: outcomeSide(index),
+    sort_order: index,
+  }));
+
+  if (outcomeRows.length < 2) return null;
+
+  return {
+    market: {
+      id,
+      slug: event.slug,
+      category: "special",
+      code: config.code,
+      title: config.title,
+      note: "Polymarketのネタ枠",
       volume_label: formatVolumeLabel(event.volume),
       source: "polymarket",
       polymarket_slug: event.slug,
@@ -462,6 +521,29 @@ const futureEvents: Record<string, FutureEventConfig> = {
     category: "special",
     code: "UECL",
   },
+  "epl-2026-27-which-manager-gets-sacked-first": {
+    title: "最初にクビになる監督は？",
+    category: "special",
+    code: "SACK",
+  },
+  "michael-carrick-out-as-manchester-united-manager-by": {
+    title: "キャリックがマンチェスター・U監督を去るのはいつ？",
+    category: "special",
+    code: "CARRICK",
+    label: deadlineLabel,
+  },
+  "manchester-city-punishment-announced-by": {
+    title: "マンチェスター・Cへの処分が発表されるのはいつ？",
+    category: "special",
+    code: "MCWHEN",
+    label: deadlineLabel,
+  },
+  "how-many-premier-league-points-will-manchester-city-be-deducted": {
+    title: "マンチェスター・Cは勝点を何点剥奪される？",
+    category: "special",
+    code: "MCPOINTS",
+    label: pointsDeductionLabel,
+  },
   "premier-league-top-goalscorer-2026-27": {
     title: "得点王は？",
     category: "special",
@@ -483,6 +565,91 @@ const futureEvents: Record<string, FutureEventConfig> = {
     code: "TCS",
   },
 };
+
+// Yes/Noひとつで完結するイベント。順位や記録と違って、結果以外の話題で遊べる枠。
+const binaryEvents: Record<string, { title: string; code: string }> = {
+  "will-theunitedstrand-get-a-haircut-by-2026-27-season-end": {
+    title: "TheUnitedStrandは今季中に髪を切る？",
+    code: "HAIR",
+  },
+  "will-manchester-city-be-relegated-from-the-premier-league-in-2026-27": {
+    title: "マンチェスター・Cは降格する？",
+    code: "MCDOWN",
+  },
+  "will-manchester-city-be-deducted-premier-league-points-by-june-30-2027": {
+    title: "マンチェスター・Cは勝点を剥奪される？",
+    code: "MCPEN",
+  },
+  "will-manchester-city-be-stripped-of-a-premier-league-title-by-june-30-2027": {
+    title: "マンチェスター・Cは優勝タイトルを剥奪される？",
+    code: "MCTITLE",
+  },
+  "will-a-transfer-restriction-on-manchester-city-be-applied-by-the-2027-summer-transfer-window": {
+    title: "マンチェスター・Cに補強禁止処分が下る？",
+    code: "MCBAN",
+  },
+  "will-manchester-citys-115-charges-verdict-be-overturned-by-june-30-2027": {
+    title: "マンチェスター・Cの115件の告発は覆る？",
+    code: "MC115",
+  },
+  "uefa-sanctions-man-city-by-may-30-2027": {
+    title: "UEFAはマンチェスター・Cを処分する？",
+    code: "MCUEFA",
+  },
+  "uefa-opens-man-city-investigation-by-may-30-2027": {
+    title: "UEFAはマンチェスター・Cの調査を始める？",
+    code: "MCPROBE",
+  },
+};
+
+function futureOutcomeLabel(market: GammaMarket, config: FutureEventConfig) {
+  const raw = market.groupItemTitle || extractFutureItem(market.question);
+
+  return config.label ? config.label(raw) : toJa(raw);
+}
+
+// "Oct 31, 2026" や "October 9" のような締切の選択肢。年は付く時と付かない時がある。
+function deadlineLabel(value: string) {
+  const match = value.trim().match(/^([A-Za-z]+)\.?\s+(\d{1,2})(?:,\s*(\d{4}))?$/);
+  const month = match ? monthNumbers[match[1].slice(0, 3).toLowerCase()] : undefined;
+
+  if (!match || !month) {
+    return value;
+  }
+
+  const day = Number(match[2]);
+
+  return match[3] ? `${match[3]}年${month}月${day}日まで` : `${month}月${day}日まで`;
+}
+
+const monthNumbers: Record<string, number> = {
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12,
+};
+
+const pointsDeductionLabels: Record<string, string> = {
+  "0": "剥奪なし",
+  "1-9": "1〜9点",
+  "10-19": "10〜19点",
+  "20-29": "20〜29点",
+  "30-49": "30〜49点",
+  "50+": "50点以上",
+  Expelled: "リーグ追放",
+};
+
+function pointsDeductionLabel(value: string) {
+  return pointsDeductionLabels[value.trim()] ?? value;
+}
 
 function parseGammaOutcomes(market: GammaMarket, closed = false) {
   const labels = safeJsonArray(market.outcomes);
