@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountCard } from "@/components/account-card";
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
 import { formatOdds, formatPoints } from "@/lib/odds";
@@ -91,6 +92,7 @@ export function TransactionsBoard() {
       </main>
 
       <aside className="side-panel">
+        <AccountCard />
         <section className="asset-card">
           <span>保有ポイント</span>
           <strong className={loading ? "loading-value" : ""}>

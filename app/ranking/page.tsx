@@ -1,3 +1,4 @@
+import { AccountCard } from "@/components/account-card";
 import { AppSidebar } from "@/components/app-sidebar";
 import { getRanking } from "@/lib/data";
 
@@ -37,6 +38,7 @@ export default async function RankingPage() {
         </main>
 
         <aside className="side-panel">
+          <AccountCard />
           <section className="ticket">
             <h2>ランキングについて</h2>
             <div className="selected-box">

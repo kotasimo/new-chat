@@ -1373,6 +1373,99 @@ button.fixture:focus-visible .fixture-more {
   margin-bottom: 14px;
 }
 
+/* 右の列のアカウント欄 */
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.account-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #eef0ed;
+  color: #46514b;
+}
+
+.account-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.account-name strong {
+  display: block;
+  overflow: hidden;
+  font-size: 14.5px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-name small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.account-rename {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+}
+
+.account-rename:hover {
+  border-color: #15805a;
+  background: var(--green-soft);
+  color: #0f6b4a;
+}
+
+.account-edit {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+}
+
+.account-edit input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 9px;
+  font-size: 13.5px;
+}
+
+.account-edit button {
+  flex: 0 0 auto;
+  height: 32px;
+  border: 1px solid #15805a;
+  border-radius: 8px;
+  background: var(--green-soft);
+  padding: 0 11px;
+  color: #0f6b4a;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
 .asset-card {
   display: grid;
   gap: 6px;

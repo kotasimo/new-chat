@@ -22,8 +22,6 @@ const navItems = [
   { label: "終了市場", href: "/history", icon: Clock3 },
 ];
 
-const DISPLAY_NAME_CACHE_KEY = "yosoku_display_name";
-
 type AppSidebarProps = {
   activeLeague?: LeagueId | null;
 };
@@ -31,25 +29,9 @@ type AppSidebarProps = {
 export function AppSidebar({ activeLeague = null }: AppSidebarProps) {
   const pathname = usePathname();
   const [points, setPoints] = useState<number | null>(null);
-  const [displayName, setDisplayName] = useState(() => {
-    if (typeof window === "undefined") {
-      return "ゲスト";
-    }
-
-    return window.localStorage.getItem(DISPLAY_NAME_CACHE_KEY) ?? "ゲスト";
-  });
-  const [draftName, setDraftName] = useState(displayName);
-  const [editingName, setEditingName] = useState(false);
-  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     let ignore = false;
-
-    function updateDisplayName(name: string) {
-      window.localStorage.setItem(DISPLAY_NAME_CACHE_KEY, name);
-      setDisplayName(name);
-      setDraftName(name);
-    }
 
     async function loadProfile() {
       try {
@@ -59,7 +41,6 @@ export function AppSidebar({ activeLeague = null }: AppSidebarProps) {
         if (!response.ok) return;
 
         if (!ignore) {
-          updateDisplayName(result.profile.displayName);
           setPoints(result.profile.points);
         }
       } catch {
@@ -85,40 +66,6 @@ export function AppSidebar({ activeLeague = null }: AppSidebarProps) {
     window.addEventListener("yosoku:points-updated", updatePoints);
     return () => window.removeEventListener("yosoku:points-updated", updatePoints);
   }, []);
-
-  async function saveDisplayName() {
-    const nextName = draftName.trim();
-
-    if (!nextName || nextName.length > 16) {
-      return;
-    }
-
-    setSavingName(true);
-
-    try {
-      const response = await fetchWithAnonymousAuth("/api/profile", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ displayName: nextName }),
-      });
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error ?? "表示名を更新できませんでした。");
-      }
-
-      window.localStorage.setItem(DISPLAY_NAME_CACHE_KEY, result.profile.displayName);
-      setDisplayName(result.profile.displayName);
-      setDraftName(result.profile.displayName);
-      setEditingName(false);
-    } catch {
-      setDraftName(displayName);
-    } finally {
-      setSavingName(false);
-    }
-  }
 
   return (
     <aside className="sidebar">
@@ -192,31 +139,6 @@ export function AppSidebar({ activeLeague = null }: AppSidebarProps) {
           );
         })}
       </nav>
-
-      <div className="sidebar-profile">
-        <span>アカウント</span>
-        {editingName ? (
-          <div className="sidebar-profile-edit">
-            <input
-              aria-label="表示名"
-              maxLength={16}
-              value={draftName}
-              onChange={(event) => setDraftName(event.target.value)}
-            />
-            <button disabled={savingName} type="button" onClick={saveDisplayName}>
-              {savingName ? "保存中" : "保存"}
-            </button>
-          </div>
-        ) : (
-          <div className="sidebar-profile-view">
-            <strong suppressHydrationWarning>{displayName}</strong>
-            <button type="button" onClick={() => setEditingName(true)}>
-              アカウント名変更
-            </button>
-          </div>
-        )}
-        <small>この端末に予想履歴を保存しています。</small>
-      </div>
 
       <p className="sidebar-note">
         <strong>無料ポイントの予想ゲーム。</strong>

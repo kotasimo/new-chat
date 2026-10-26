@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountCard } from "@/components/account-card";
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
@@ -105,6 +106,7 @@ export function PredictionPanel({
 
   return (
     <aside className={`side-panel ${selectedPrediction ? "has-selection" : ""}`}>
+      <AccountCard />
       <section className="asset-card">
         <span>保有ポイント</span>
         <strong className={guestLoading ? "loading-value" : ""}>

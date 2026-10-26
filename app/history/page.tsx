@@ -1,3 +1,4 @@
+import { AccountCard } from "@/components/account-card";
 import { AppSidebar } from "@/components/app-sidebar";
 import { getClosedMarkets } from "@/lib/data";
 import { leagues, toLeagueId } from "@/lib/leagues";
@@ -130,6 +131,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
         </main>
 
         <aside className="side-panel">
+          <AccountCard />
           <section className="ticket">
             <h2>予想チケット</h2>
             <div className="selected-box">
