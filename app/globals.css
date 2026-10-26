@@ -260,8 +260,8 @@ button {
 }
 
 .search-box {
-  flex: 1;
-  min-width: 220px;
+  flex: 1 1 auto;
+  min-width: 180px;
   height: 44px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -361,6 +361,9 @@ button {
   opacity: 0.64;
 }
 
+
+
+
 .tabs {
   display: flex;
   gap: 8px;
@@ -382,6 +385,10 @@ button {
   border-color: #111;
   background: #111;
   color: white;
+}
+
+.league-tabs .tab-button {
+  font-weight: 600;
 }
 
 .section-head {
@@ -2050,26 +2057,12 @@ button.fixture:focus-visible .fixture-more {
   }
 }
 
-.tab-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 16px 0;
-}
 
-.league-tabs {
-  margin: 0;
-  min-width: 0;
-  flex: 1 1 auto;
-}
 
-.league-tabs .tab-button {
-  font-weight: 600;
-}
 
 .category-select {
   flex: 0 0 auto;
-  height: 38px;
+  height: 44px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;

@@ -260,6 +260,18 @@ export function MarketBoard({
               onChange={(event) => setSearchQuery(event.target.value)}
             />
           </div>
+          <select
+            aria-label="マーケット種別"
+            className={`category-select ${activeTab === "all" ? "" : "active"}`}
+            value={activeTab}
+            onChange={(event) => setActiveTab(event.target.value as "all" | MarketCategory)}
+          >
+            {tabs.map((tab) => (
+              <option key={tab.key} value={tab.key}>
+                {tab.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className={`mobile-search-panel ${mobileSearchOpen ? "open" : ""}`}>
@@ -298,21 +310,6 @@ export function MarketBoard({
             </button>
           </section>
         ) : null}
-
-        <div className="tab-row">
-          <select
-            aria-label="マーケット種別"
-            className={`category-select ${activeTab === "all" ? "" : "active"}`}
-            value={activeTab}
-            onChange={(event) => setActiveTab(event.target.value as "all" | MarketCategory)}
-          >
-            {tabs.map((tab) => (
-              <option key={tab.key} value={tab.key}>
-                {tab.label}
-              </option>
-            ))}
-          </select>
-        </div>
 
         {focusedFixture ? (
           <div className="focus-bar">
