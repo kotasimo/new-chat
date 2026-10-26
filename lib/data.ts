@@ -42,12 +42,24 @@ type MarketRecord = {
   }>;
 };
 
-export async function getHomeMarkets(league: LeagueId): Promise<Market[]> {
-  try {
-    if (!hasSupabaseConfig()) {
-      return initialMarkets;
-    }
+/**
+ * live   … Supabaseから取れた本物のマーケット
+ * sample … Supabase未設定なので、見た目確認用のサンプルを出している
+ * error  … 設定はあるが読み込みに失敗した
+ */
+export type MarketSource = "live" | "sample" | "error";
 
+export type HomeMarkets = {
+  markets: Market[];
+  source: MarketSource;
+};
+
+export async function getHomeMarkets(league: LeagueId): Promise<HomeMarkets> {
+  if (!hasSupabaseConfig()) {
+    return { markets: initialMarkets, source: "sample" };
+  }
+
+  try {
     const supabase = createServerSupabaseClient();
     const { data, error } = await supabase
       .from("markets")
@@ -64,11 +76,8 @@ export async function getHomeMarkets(league: LeagueId): Promise<Market[]> {
 
     const records = (data ?? []) as MarketRecord[];
 
-    if (!records.length) {
-      return initialMarkets;
-    }
-
-    return records.map((market) => ({
+    // 0件はエラーではない。サンプルで埋めると、別リーグの偽物が出てしまう。
+    const markets = records.map((market) => ({
       id: market.id,
       slug: market.slug,
       league: market.league as LeagueId,
@@ -94,8 +103,11 @@ export async function getHomeMarkets(league: LeagueId): Promise<Market[]> {
         winning: outcome.winning,
       })),
     }));
+
+    return { markets, source: "live" };
   } catch {
-    return initialMarkets;
+    // 読み込めないときにサンプルを出すと、偽のマーケットを本物として見せてしまう。
+    return { markets: [], source: "error" };
   }
 }
 

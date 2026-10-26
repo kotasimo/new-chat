@@ -1454,6 +1454,33 @@ button {
   font-size: 11px;
 }
 
+.data-notice {
+  display: block;
+  border: 1px solid var(--amber-line);
+  border-radius: 8px;
+  background: var(--amber-soft);
+  padding: 11px 14px;
+  margin: 0 0 12px;
+  color: #6b5111;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.data-notice strong {
+  color: #4a3808;
+  font-weight: 800;
+}
+
+.data-notice.error {
+  border-color: #e7c4bf;
+  background: #fdf1ef;
+  color: #7a3027;
+}
+
+.data-notice.error strong {
+  color: #5f241d;
+}
+
 .empty-text {
   margin: 0;
   color: var(--muted);

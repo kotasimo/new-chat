@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MarketCard } from "@/components/market-card";
 import { PredictionPanel } from "@/components/prediction-panel";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
+import type { MarketSource } from "@/lib/data";
 import { leagues, type LeagueId } from "@/lib/leagues";
 import type {
   Market,
@@ -25,6 +26,7 @@ const tabs: Array<{ key: "all" | MarketCategory; label: string }> = [
 type MarketBoardProps = {
   activeLeague: LeagueId;
   markets: Market[];
+  marketSource: MarketSource;
   initialBalance: number;
   initialPredictionHistory: PredictionHistoryItem[];
 };
@@ -38,6 +40,7 @@ type PeriodicBonusState = {
 export function MarketBoard({
   activeLeague,
   markets,
+  marketSource,
   initialBalance,
   initialPredictionHistory,
 }: MarketBoardProps) {
@@ -313,6 +316,21 @@ export function MarketBoard({
             ) : null}
           </div>
         </div>
+
+        {marketSource === "sample" ? (
+          <p className="data-notice">
+            <strong>サンプル表示中。</strong>
+            Supabaseが設定されていないため、動作確認用のマーケットを出しています。
+            実際のマーケットは出ていません。
+          </p>
+        ) : null}
+
+        {marketSource === "error" ? (
+          <p className="data-notice error">
+            <strong>マーケットを読み込めませんでした。</strong>
+            しばらくしてから再読み込みしてください。
+          </p>
+        ) : null}
 
         <div className="market-list">
           {visibleMarkets.length ? visibleMarkets.map((market) => (

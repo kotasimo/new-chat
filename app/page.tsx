@@ -14,7 +14,7 @@ type HomeProps = {
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const league = toLeagueId(params?.league);
-  const markets = await getHomeMarkets(league);
+  const { markets, source } = await getHomeMarkets(league);
 
   return (
     <div className="app-shell">
@@ -24,6 +24,7 @@ export default async function Home({ searchParams }: HomeProps) {
         initialBalance={10000}
         initialPredictionHistory={[]}
         markets={markets}
+        marketSource={source}
       />
     </div>
   );
