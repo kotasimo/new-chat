@@ -8,7 +8,7 @@ import { MarketCard } from "@/components/market-card";
 import { PredictionPanel } from "@/components/prediction-panel";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
 import type { MarketSource } from "@/lib/data";
-import { leagues, type LeagueId } from "@/lib/leagues";
+import { leagueLabel, leagues, type LeagueId } from "@/lib/leagues";
 import { fixtureKey, marketTypeRank, parseFixture } from "@/lib/market-type";
 import type {
   Market,
@@ -25,9 +25,10 @@ const tabs: Array<{ key: "all" | MarketCategory; label: string }> = [
 ];
 
 type MarketBoardProps = {
-  activeLeague: LeagueId;
+  activeLeague: LeagueId | null;
   markets: Market[];
   marketSource: MarketSource;
+  upcomingMarkets?: Market[];
   initialBalance: number;
   initialPredictionHistory: PredictionHistoryItem[];
 };
@@ -42,6 +43,7 @@ export function MarketBoard({
   activeLeague,
   markets,
   marketSource,
+  upcomingMarkets = [],
   initialBalance,
   initialPredictionHistory,
 }: MarketBoardProps) {
@@ -145,6 +147,11 @@ export function MarketBoard({
       })
       : filteredMarkets;
 
+    // ホームは出来高の高い順に並べてあるので、種類でまとめ直さない。
+    if (!activeLeague && !focusedFixture) {
+      return searchedMarkets;
+    }
+
     // 同じ種類をまとめて、試合結果を先頭に置く。結果待ちはその種類の中で先に出す。
     return [...searchedMarkets].sort((a, b) => {
       const byType = marketTypeRank(a) - marketTypeRank(b);
@@ -161,7 +168,15 @@ export function MarketBoard({
 
       return 0;
     });
-  }, [activeTab, focusedFixture, markets, now, searchQuery]);
+  }, [activeLeague, activeTab, focusedFixture, markets, now, searchQuery]);
+  // ホームで、絞り込みも検索もしていないときだけ直近の試合を出す。
+  const showUpcoming =
+    !activeLeague &&
+    !focusedFixture &&
+    activeTab === "all" &&
+    !searchQuery.trim() &&
+    upcomingMarkets.length > 0;
+
   const focusedTitle = useMemo(() => {
     if (!focusedFixture) return "";
 
@@ -287,6 +302,9 @@ export function MarketBoard({
 
         <div className="tab-row">
           <nav className="tabs league-tabs" aria-label="リーグ">
+            <Link className={`tab-button ${activeLeague ? "" : "active"}`} href="/">
+              注目
+            </Link>
             {leagues.map((league) => (
               <Link
                 className={`tab-button ${activeLeague === league.id ? "active" : ""}`}
@@ -322,9 +340,31 @@ export function MarketBoard({
           </div>
         ) : null}
 
+        {showUpcoming ? (
+          <>
+            <div className="section-head">
+              <h2>まもなく締切の試合</h2>
+              <div>
+                <span>キックオフが近い順</span>
+              </div>
+            </div>
+            <div className="market-list">
+              {upcomingMarkets.map((market) => (
+                <MarketCard
+                  key={market.id}
+                  market={market}
+                  now={now}
+                  selectedOutcomeId={selectedPrediction?.outcomeId}
+                  onSelect={setSelectedPrediction}
+                />
+              ))}
+            </div>
+          </>
+        ) : null}
+
         {focusedFixture ? null : (
           <div className="section-head">
-            <h2>注目マーケット</h2>
+            <h2>{activeLeague ? `${leagueLabel(activeLeague)}のマーケット` : "注目マーケット"}</h2>
             <div>
               <span>倍率は予測確率から自動換算</span>
               {lastSyncedAt ? (

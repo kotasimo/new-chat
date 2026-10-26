@@ -9,7 +9,7 @@ import type {
   RankingItem,
   UserProfile,
 } from "@/lib/types";
-import { localizeVolumeLabel } from "@/lib/volume";
+import { localizeVolumeLabel, volumeLabelToUsdValue } from "@/lib/volume";
 
 const DEMO_EMAIL = "demo@yosoku-cup.local";
 const MARKET_SELECT =
@@ -41,6 +41,35 @@ type MarketRecord = {
     winning: boolean;
   }>;
 };
+
+function toMarket(market: MarketRecord): Market {
+  return {
+    id: market.id,
+    slug: market.slug,
+    league: market.league as LeagueId,
+    category: market.category as MarketCategory,
+    code: market.code,
+    title: market.title,
+    note: market.note,
+    volumeLabel: localizeVolumeLabel(market.volume_label),
+    source: market.source as Market["source"],
+    polymarketSlug: market.polymarket_slug ?? undefined,
+    closed: market.closed,
+    closedAt: market.closed_at ?? undefined,
+    startsAt: market.starts_at ?? undefined,
+    lockAt: market.lock_at ?? undefined,
+    syncedAt: market.synced_at ?? undefined,
+    winningOutcomeId: market.winning_outcome_id ?? undefined,
+    outcomes: market.outcomes.map((outcome) => ({
+      id: outcome.id,
+      label: outcome.label,
+      probability: outcome.probability,
+      side: outcome.side as "yes" | "no" | "other",
+      finalPrice: outcome.final_price ?? undefined,
+      winning: outcome.winning,
+    })),
+  };
+}
 
 /**
  * live   … Supabaseから取れた本物のマーケット
@@ -77,38 +106,84 @@ export async function getHomeMarkets(league: LeagueId): Promise<HomeMarkets> {
     const records = (data ?? []) as MarketRecord[];
 
     // 0件はエラーではない。サンプルで埋めると、別リーグの偽物が出てしまう。
-    const markets = records.map((market) => ({
-      id: market.id,
-      slug: market.slug,
-      league: market.league as LeagueId,
-      category: market.category as MarketCategory,
-      code: market.code,
-      title: market.title,
-      note: market.note,
-      volumeLabel: localizeVolumeLabel(market.volume_label),
-      source: market.source as Market["source"],
-      polymarketSlug: market.polymarket_slug ?? undefined,
-      closed: market.closed,
-      closedAt: market.closed_at ?? undefined,
-      startsAt: market.starts_at ?? undefined,
-      lockAt: market.lock_at ?? undefined,
-      syncedAt: market.synced_at ?? undefined,
-      winningOutcomeId: market.winning_outcome_id ?? undefined,
-      outcomes: market.outcomes.map((outcome) => ({
-        id: outcome.id,
-        label: outcome.label,
-        probability: outcome.probability,
-        side: outcome.side as "yes" | "no" | "other",
-        finalPrice: outcome.final_price ?? undefined,
-        winning: outcome.winning,
-      })),
-    }));
+    const markets = records.map(toMarket);
 
     return { markets, source: "live" };
   } catch {
     // 読み込めないときにサンプルを出すと、偽のマーケットを本物として見せてしまう。
     return { markets: [], source: "error" };
   }
+}
+
+/**
+ * リーグをまたいだ注目マーケット。出来高の数値は列に持っていないので、
+ * 各リーグの上位だけを取ってきて、表示用のラベルから金額を読み直して並べる。
+ */
+/** ホームの先頭に出す、キックオフが近い試合。出来高順だと通期の市場ばかりになるため。 */
+export async function getUpcomingFixtures(limit = 6): Promise<Market[]> {
+  if (!hasSupabaseConfig()) {
+    return initialMarkets.filter((market) => market.category === "match").slice(0, limit);
+  }
+
+  try {
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("markets")
+      .select(MARKET_SELECT)
+      .eq("active", true)
+      .eq("closed", false)
+      .eq("category", "match")
+      .gt("lock_at", new Date().toISOString())
+      .order("lock_at", { ascending: true })
+      .order("sort_order", { ascending: true, referencedTable: "outcomes" })
+      .limit(120);
+
+    if (error) {
+      throw error;
+    }
+
+    return ((data ?? []) as MarketRecord[])
+      .filter((market) => market.title.endsWith("試合結果は？"))
+      .slice(0, limit)
+      .map(toMarket);
+  } catch {
+    return [];
+  }
+}
+
+export async function getFeaturedMarkets(limit = 12): Promise<HomeMarkets> {
+  if (!hasSupabaseConfig()) {
+    return { markets: initialMarkets.slice(0, limit), source: "sample" };
+  }
+
+  try {
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("markets")
+      .select(MARKET_SELECT)
+      .eq("active", true)
+      .eq("closed", false)
+      .order("sort_order", { ascending: true })
+      .order("sort_order", { ascending: true, referencedTable: "outcomes" })
+      .limit(240);
+
+    if (error) {
+      throw error;
+    }
+
+    const markets = ((data ?? []) as MarketRecord[]).map(toMarket);
+    const ranked = [...markets].sort(
+      (a, b) => volumeOf(b.volumeLabel) - volumeOf(a.volumeLabel),
+    );
+
+    return { markets: ranked.slice(0, limit), source: "live" };
+  } catch {
+    return { markets: [], source: "error" };
+  }
+}
+
+function volumeOf(label: string) {
+  return volumeLabelToUsdValue(label) ?? 0;
 }
 
 export async function getClosedMarkets(league: LeagueId, limit = 80): Promise<Market[]> {

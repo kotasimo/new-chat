@@ -1,7 +1,7 @@
 import { MarketBoard } from "@/components/market-board";
 import { AppSidebar } from "@/components/app-sidebar";
-import { getHomeMarkets } from "@/lib/data";
-import { toLeagueId } from "@/lib/leagues";
+import { getFeaturedMarkets, getHomeMarkets, getUpcomingFixtures } from "@/lib/data";
+import { isLeagueId } from "@/lib/leagues";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +13,13 @@ type HomeProps = {
 
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
-  const league = toLeagueId(params?.league);
-  const { markets, source } = await getHomeMarkets(league);
+
+  // リーグを選んでいないときはホーム。リーグをまたいだ注目マーケットを出す。
+  const league = isLeagueId(params?.league) ? params.league : null;
+  const [{ markets, source }, upcoming] = await Promise.all([
+    league ? getHomeMarkets(league) : getFeaturedMarkets(),
+    league ? Promise.resolve([]) : getUpcomingFixtures(),
+  ]);
 
   return (
     <div className="app-shell">
@@ -25,6 +30,7 @@ export default async function Home({ searchParams }: HomeProps) {
         initialPredictionHistory={[]}
         markets={markets}
         marketSource={source}
+        upcomingMarkets={upcoming}
       />
     </div>
   );
