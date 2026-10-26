@@ -9,6 +9,7 @@ import { PredictionPanel } from "@/components/prediction-panel";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
 import type { MarketSource } from "@/lib/data";
 import { leagues, type LeagueId } from "@/lib/leagues";
+import { marketTypeRank } from "@/lib/market-type";
 import type {
   Market,
   MarketCategory,
@@ -139,7 +140,13 @@ export function MarketBoard({
       })
       : filteredMarkets;
 
+    // 同じ種類をまとめて、試合結果を先頭に置く。結果待ちはその種類の中で先に出す。
     return [...searchedMarkets].sort((a, b) => {
+      const byType = marketTypeRank(a) - marketTypeRank(b);
+      if (byType !== 0) {
+        return byType;
+      }
+
       const aWaiting = isWaitingResult(a, now);
       const bWaiting = isWaitingResult(b, now);
 

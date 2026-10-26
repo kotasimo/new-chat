@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { clubColors, matchClubName, neutralOutcomeColor } from "@/lib/club-colors";
 import { clubCrests } from "@/lib/crests";
+import { fixtureType, parseFixture, type Fixture } from "@/lib/market-type";
 import { leagueLabel } from "@/lib/leagues";
 import { formatOddsValue, formatProbability, probabilityToOdds } from "@/lib/odds";
 import type { Market, Outcome, SelectedPrediction } from "@/lib/types";
@@ -75,8 +76,6 @@ export function MarketCard({ market, now, selectedOutcomeId, onSelect }: MarketC
     </article>
   );
 }
-
-type Fixture = { home: string; away: string; question: string };
 
 type FixtureMarketProps = {
   market: Market;
@@ -291,30 +290,6 @@ function toPrediction(market: Market, outcome: Outcome, odds: number): SelectedP
     odds,
     kickoffAt: market.startsAt,
   };
-}
-
-// 同じ対戦カードが何枚も並ぶので、何を当てる市場かはカードの頭で見分けられるようにする。
-const fixtureTypes: Array<{ match: RegExp; label: string; tone: string }> = [
-  { match: /^試合結果/, label: "試合結果", tone: "result" },
-  { match: /^先制/, label: "先制点", tone: "first" },
-  { match: /^ハーフタイム/, label: "ハーフタイム", tone: "half" },
-  { match: /^前半に両チーム/, label: "前半に両チーム得点", tone: "half" },
-  { match: /^両チーム/, label: "両チーム得点", tone: "goals" },
-];
-
-function fixtureType(question: string) {
-  const found = fixtureTypes.find((type) => type.match.test(question));
-
-  // 知らない問いはそのまま出す。空のラベルより読めるほうがいい。
-  return found ?? { label: question.replace(/？$/, ""), tone: "other" };
-}
-
-/** "チェルシー vs マンチェスター・U: 試合結果は？" を対戦カードと問いに分ける。 */
-function parseFixture(title: string): Fixture | null {
-  const match = title.match(/^(.+?) vs (.+?): (.+)$/);
-  if (!match) return null;
-
-  return { home: match[1], away: match[2], question: match[3] };
 }
 
 /** コードは "CHE-MUN" の形。崩れていてもエンブレムが空にならないようにする。 */
