@@ -27,6 +27,18 @@ export function fixtureType(question: string) {
   return found ?? { label: question.replace(/？$/, ""), tone: "other" };
 }
 
+/**
+ * 同じ試合のマーケットを束ねるキー。slugは "epl-che-mun-2026-10-31" が共通で、
+ * 種類ごとに "-btts" のような接尾辞が付く。日付が取れないものは束ねない。
+ */
+export function fixtureKey(market: Market) {
+  if (market.category !== "match") return null;
+
+  const match = market.slug.match(/^(.+?-\d{4}-\d{2}-\d{2})(?:-.+)?$/);
+
+  return match ? match[1] : null;
+}
+
 const UNKNOWN_FIXTURE = fixtureTypes.length;
 const WINNER = fixtureTypes.length + 1;
 const SPECIAL = fixtureTypes.length + 2;

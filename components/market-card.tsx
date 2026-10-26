@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { clubColors, matchClubName, neutralOutcomeColor } from "@/lib/club-colors";
 import { clubCrests } from "@/lib/crests";
-import { fixtureType, parseFixture, type Fixture } from "@/lib/market-type";
+import { fixtureKey, fixtureType, parseFixture, type Fixture } from "@/lib/market-type";
 import { leagueLabel } from "@/lib/leagues";
 import { formatOddsValue, formatProbability, probabilityToOdds } from "@/lib/odds";
 import type { Market, Outcome, SelectedPrediction } from "@/lib/types";
@@ -15,12 +15,19 @@ type MarketCardProps = {
   now: number | null;
   selectedOutcomeId?: string;
   onSelect: (prediction: SelectedPrediction) => void;
+  onFocusFixture?: (key: string) => void;
 };
 
 // 選択肢が多い市場は上位だけ出して、残りは畳んでおく。
 const COLLAPSED_ROWS = 5;
 
-export function MarketCard({ market, now, selectedOutcomeId, onSelect }: MarketCardProps) {
+export function MarketCard({
+  market,
+  now,
+  selectedOutcomeId,
+  onSelect,
+  onFocusFixture,
+}: MarketCardProps) {
   const isSelectedMarket = market.outcomes.some((outcome) => outcome.id === selectedOutcomeId);
   const lockState = getLockState(market.lockAt, now);
   const isSelectable = !lockState.locked;
@@ -64,6 +71,7 @@ export function MarketCard({ market, now, selectedOutcomeId, onSelect }: MarketC
           locked={lockState.locked}
           selectedOutcomeId={selectedOutcomeId}
           onSelect={onSelect}
+          onFocusFixture={onFocusFixture}
         />
       ) : (
         <ListMarket
@@ -83,6 +91,7 @@ type FixtureMarketProps = {
   locked: boolean;
   selectedOutcomeId?: string;
   onSelect: (prediction: SelectedPrediction) => void;
+  onFocusFixture?: (key: string) => void;
 };
 
 /** 試合の市場。ホーム・引き分け・アウェイを横に並べる、サッカーでおなじみの形にする。 */
@@ -92,22 +101,46 @@ function FixtureMarket({
   locked,
   selectedOutcomeId,
   onSelect,
+  onFocusFixture,
 }: FixtureMarketProps) {
   const [homeCode, awayCode] = splitCode(market.code);
+  const key = fixtureKey(market);
+  const canFocus = Boolean(key && onFocusFixture);
+
+  const teams = (
+    <>
+      <div className="fixture-team">
+        <Crest name={fixture.home} code={homeCode} size={30} />
+        <strong>{fixture.home}</strong>
+      </div>
+      <span className="fixture-vs">vs</span>
+      <div className="fixture-team away">
+        <strong>{fixture.away}</strong>
+        <Crest name={fixture.away} code={awayCode} size={30} />
+      </div>
+    </>
+  );
 
   return (
     <>
-      <div className="fixture">
-        <div className="fixture-team">
-          <Crest name={fixture.home} code={homeCode} size={30} />
-          <strong>{fixture.home}</strong>
-        </div>
-        <span className="fixture-vs">vs</span>
-        <div className="fixture-team away">
-          <strong>{fixture.away}</strong>
-          <Crest name={fixture.away} code={awayCode} size={30} />
-        </div>
-      </div>
+      {canFocus ? (
+        <button
+          className="fixture is-link"
+          type="button"
+          aria-label={`${fixture.home} vs ${fixture.away} のマーケットをまとめて見る`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onFocusFixture?.(key as string);
+          }}
+        >
+          {teams}
+          <span className="fixture-more" aria-hidden="true">
+            この試合のマーケット →
+          </span>
+        </button>
+      ) : (
+        <div className="fixture">{teams}</div>
+      )}
 
       <div className="pick-grid" data-count={market.outcomes.length}>
         {market.outcomes.map((outcome, index) => (

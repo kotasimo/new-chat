@@ -9,7 +9,7 @@ import { PredictionPanel } from "@/components/prediction-panel";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
 import type { MarketSource } from "@/lib/data";
 import { leagues, type LeagueId } from "@/lib/leagues";
-import { marketTypeRank } from "@/lib/market-type";
+import { fixtureKey, marketTypeRank, parseFixture } from "@/lib/market-type";
 import type {
   Market,
   MarketCategory,
@@ -57,6 +57,7 @@ export function MarketBoard({
   const [claimingBonus, setClaimingBonus] = useState(false);
   const [now, setNow] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [focusedFixture, setFocusedFixture] = useState<string | null>(null);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -122,10 +123,14 @@ export function MarketBoard({
   }, []);
 
   const visibleMarkets = useMemo(() => {
-    const filteredMarkets = activeTab === "all"
-      ? markets
-      : markets.filter((market) => market.category === activeTab);
-    const normalizedQuery = searchQuery.trim().toLowerCase();
+    // 試合を選んでいるあいだは、その試合のマーケットだけを出す。
+    const scopedMarkets = focusedFixture
+      ? markets.filter((market) => fixtureKey(market) === focusedFixture)
+      : markets;
+    const filteredMarkets = focusedFixture || activeTab === "all"
+      ? scopedMarkets
+      : scopedMarkets.filter((market) => market.category === activeTab);
+    const normalizedQuery = focusedFixture ? "" : searchQuery.trim().toLowerCase();
     const searchedMarkets = normalizedQuery
       ? filteredMarkets.filter((market) => {
         const searchableText = [
@@ -156,7 +161,16 @@ export function MarketBoard({
 
       return 0;
     });
-  }, [activeTab, markets, now, searchQuery]);
+  }, [activeTab, focusedFixture, markets, now, searchQuery]);
+  const focusedTitle = useMemo(() => {
+    if (!focusedFixture) return "";
+
+    const market = markets.find((item) => fixtureKey(item) === focusedFixture);
+    const fixture = market ? parseFixture(market.title) : null;
+
+    return fixture ? `${fixture.home} vs ${fixture.away}` : "この試合";
+  }, [focusedFixture, markets]);
+
   const lastSyncedAt = useMemo(() => {
     const latest = markets.reduce((max, market) => {
       if (!market.syncedAt) return max;
@@ -312,17 +326,29 @@ export function MarketBoard({
           </select>
         </div>
 
-        <div className="section-head">
-          <h2>注目マーケット</h2>
-          <div>
-            <span>倍率は予測確率から自動換算</span>
-            {lastSyncedAt ? (
-              <time dateTime={lastSyncedAt}>
-                最終同期 {formatSyncTime(lastSyncedAt)}
-              </time>
-            ) : null}
+        {focusedFixture ? (
+          <div className="focus-bar">
+            <button type="button" onClick={() => setFocusedFixture(null)}>
+              ← すべてのマーケット
+            </button>
+            <h2>{focusedTitle}</h2>
+            <span>{visibleMarkets.length}件</span>
           </div>
-        </div>
+        ) : null}
+
+        {focusedFixture ? null : (
+          <div className="section-head">
+            <h2>注目マーケット</h2>
+            <div>
+              <span>倍率は予測確率から自動換算</span>
+              {lastSyncedAt ? (
+                <time dateTime={lastSyncedAt}>
+                  最終同期 {formatSyncTime(lastSyncedAt)}
+                </time>
+              ) : null}
+            </div>
+          </div>
+        )}
 
         {marketSource === "sample" ? (
           <p className="data-notice">
@@ -347,6 +373,7 @@ export function MarketBoard({
               now={now}
               selectedOutcomeId={selectedPrediction?.outcomeId}
               onSelect={setSelectedPrediction}
+              onFocusFixture={focusedFixture ? undefined : setFocusedFixture}
             />
           )) : (
             <p className="empty-text">一致するマーケットはありません。</p>

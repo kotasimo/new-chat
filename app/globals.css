@@ -846,6 +846,82 @@ button {
   gap: 14px;
 }
 
+/* 対戦カードを押すと、その試合のマーケットだけに絞れる。 */
+button.fixture {
+  position: relative;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  padding: 7px 9px;
+  margin: -7px -9px;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+
+button.fixture:hover,
+button.fixture:focus-visible {
+  border-color: #cfe0d8;
+  background: #f5faf7;
+}
+
+button.fixture:focus-visible {
+  outline: 2px solid #15805a;
+  outline-offset: 1px;
+}
+
+.fixture-more {
+  position: absolute;
+  right: 10px;
+  bottom: -6px;
+  color: #0f6b4a;
+  font-size: 11px;
+  font-weight: 800;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+button.fixture:hover .fixture-more,
+button.fixture:focus-visible .fixture-more {
+  opacity: 1;
+}
+
+.focus-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 18px 0 12px;
+}
+
+.focus-bar h2 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.3;
+}
+
+.focus-bar button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  padding: 7px 13px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.focus-bar button:hover {
+  border-color: #15805a;
+  background: var(--green-soft);
+  color: #0f6b4a;
+}
+
+.focus-bar span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .fixture-team {
   display: flex;
   align-items: center;
