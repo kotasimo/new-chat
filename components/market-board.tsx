@@ -275,29 +275,31 @@ export function MarketBoard({
           </section>
         ) : null}
 
-        <nav className="tabs league-tabs" aria-label="リーグ">
-          {leagues.map((league) => (
-            <Link
-              className={`tab-button ${activeLeague === league.id ? "active" : ""}`}
-              href={`/?league=${league.id}`}
-              key={league.id}
-            >
-              {league.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="tab-row">
+          <nav className="tabs league-tabs" aria-label="リーグ">
+            {leagues.map((league) => (
+              <Link
+                className={`tab-button ${activeLeague === league.id ? "active" : ""}`}
+                href={`/?league=${league.id}`}
+                key={league.id}
+              >
+                {league.label}
+              </Link>
+            ))}
+          </nav>
 
-        <div className="tabs" role="tablist" aria-label="マーケット種別">
-          {tabs.map((tab) => (
-            <button
-              className={`tab-button ${activeTab === tab.key ? "active" : ""}`}
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </button>
-          ))}
+          <select
+            aria-label="マーケット種別"
+            className={`category-select ${activeTab === "all" ? "" : "active"}`}
+            value={activeTab}
+            onChange={(event) => setActiveTab(event.target.value as "all" | MarketCategory)}
+          >
+            {tabs.map((tab) => (
+              <option key={tab.key} value={tab.key}>
+                {tab.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="section-head">

@@ -1945,14 +1945,37 @@ button {
   }
 }
 
+.tab-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
 .league-tabs {
-  margin: 18px 0 0;
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .league-tabs .tab-button {
   font-weight: 600;
 }
 
-.league-tabs + .tabs {
-  margin-top: 10px;
+.category-select {
+  flex: 0 0 auto;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 10px;
+  color: #37403b;
+  font-size: 14px;
+}
+
+.category-select.active {
+  border-color: #15805a;
+  background: var(--green-soft);
+  color: #0f6b4a;
+  font-weight: 700;
 }
