@@ -802,12 +802,10 @@ function parseMatchTitle(title: string) {
 function matchPropTitle(slug: string, teams: Teams) {
   const prefix = `${toJa(teams.home)} vs ${toJa(teams.away)}`;
 
-  if (/-\d{4}-\d{2}-\d{2}-total-2pt5$/.test(slug)) {
-    return `${prefix}: 合計3点以上？`;
-  }
-
-  if (/-\d{4}-\d{2}-\d{2}-total-3pt5$/.test(slug)) {
-    return `${prefix}: 合計4点以上？`;
+  // 「合計N点以上」「前半にN点以上」は1試合あたり4件も増えるうえ、
+  // どれも似た見た目で一覧が埋まるので取り込まない。
+  if (isTotalGoalsSlug(slug)) {
+    return null;
   }
 
   if (/-\d{4}-\d{2}-\d{2}-btts$/.test(slug)) {
@@ -818,15 +816,12 @@ function matchPropTitle(slug: string, teams: Teams) {
     return `${prefix}: 前半に両チーム得点する？`;
   }
 
-  if (/-\d{4}-\d{2}-\d{2}-first-half-total-0pt5$/.test(slug)) {
-    return `${prefix}: 前半に1点以上入る？`;
-  }
-
-  if (/-\d{4}-\d{2}-\d{2}-first-half-total-1pt5$/.test(slug)) {
-    return `${prefix}: 前半に2点以上入る？`;
-  }
-
   return null;
+}
+
+/** 得点が何点以上かを当てるマーケット。取り込まない。 */
+export function isTotalGoalsSlug(slug: string) {
+  return /-\d{4}-\d{2}-\d{2}-(first-half-)?total-\d+pt\d+$/.test(slug);
 }
 
 function orderMatchOutcomes(
