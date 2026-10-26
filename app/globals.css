@@ -883,13 +883,21 @@ button {
   letter-spacing: -0.02em;
 }
 
-.fixture-question {
-  margin: -6px 0 0;
-  text-align: center;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
+.type-badge {
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  padding: 2.5px 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.4;
 }
+
+.type-badge.result { color: #0f6b4a; }
+.type-badge.first { color: #1d5fa8; }
+.type-badge.half { color: #8a4f00; }
+.type-badge.goals { color: #8a2f6b; }
+.type-badge.other { color: var(--muted); }
 
 .pick-grid {
   display: grid;

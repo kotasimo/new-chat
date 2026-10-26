@@ -38,6 +38,11 @@ export function MarketCard({ market, now, selectedOutcomeId, onSelect }: MarketC
     >
       <div className="card-head">
         <span className="league-badge">{leagueLabel(market.league)}</span>
+        {fixture ? (
+          <span className={`type-badge ${fixtureType(fixture.question).tone}`}>
+            {fixtureType(fixture.question).label}
+          </span>
+        ) : null}
         {market.startsAt ? (
           <time className="kickoff" dateTime={market.startsAt}>
             {formatKickoff(market.startsAt)}
@@ -104,10 +109,6 @@ function FixtureMarket({
           <Crest name={fixture.away} code={awayCode} size={30} />
         </div>
       </div>
-
-      {fixture.question === "試合結果は？" ? null : (
-        <p className="fixture-question">{fixture.question}</p>
-      )}
 
       <div className="pick-grid" data-count={market.outcomes.length}>
         {market.outcomes.map((outcome, index) => (
@@ -290,6 +291,22 @@ function toPrediction(market: Market, outcome: Outcome, odds: number): SelectedP
     odds,
     kickoffAt: market.startsAt,
   };
+}
+
+// 同じ対戦カードが何枚も並ぶので、何を当てる市場かはカードの頭で見分けられるようにする。
+const fixtureTypes: Array<{ match: RegExp; label: string; tone: string }> = [
+  { match: /^試合結果/, label: "試合結果", tone: "result" },
+  { match: /^先制/, label: "先制点", tone: "first" },
+  { match: /^ハーフタイム/, label: "ハーフタイム", tone: "half" },
+  { match: /^前半に両チーム/, label: "前半に両チーム得点", tone: "half" },
+  { match: /^両チーム/, label: "両チーム得点", tone: "goals" },
+];
+
+function fixtureType(question: string) {
+  const found = fixtureTypes.find((type) => type.match.test(question));
+
+  // 知らない問いはそのまま出す。空のラベルより読めるほうがいい。
+  return found ?? { label: question.replace(/？$/, ""), tone: "other" };
 }
 
 /** "チェルシー vs マンチェスター・U: 試合結果は？" を対戦カードと問いに分ける。 */
