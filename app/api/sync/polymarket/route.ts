@@ -7,7 +7,7 @@ import {
 import { createServerSupabaseClient, hasSupabaseConfig } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
-// 5リーグ分を1回で取り込むので、既定の実行時間では足りない。
+// 全リーグ分を1回で取り込むので、既定の実行時間では足りない。
 export const maxDuration = 300;
 
 export async function GET(request: Request) {
@@ -45,7 +45,7 @@ async function syncPolymarket(request: Request, mode: "cron" | "manual") {
       ? leagues.filter((league) => league.id === requestedLeague)
       : leagues;
     const syncedAt = new Date().toISOString();
-    // 5リーグを順番に取ると実行時間の上限に当たるので、取得だけ並列に回す。
+    // 順番に取ると実行時間の上限に当たるので、取得だけ並列に回す。
     const apiRecords = (
       await Promise.all(
         targetLeagues.map(async (league) => {

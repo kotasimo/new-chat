@@ -591,6 +591,67 @@ const futureEventRules: FutureEventRule[] = [
       label: pointsDeductionLabel,
     }),
   },
+  // ここからチャンピオンズリーグ。スラッグの付き方が各国リーグと違う。
+  {
+    pattern: /-top-scorer-\d{4}-\d{2}$/,
+    config: () => ({ title: "得点王は？", category: "special", code: "GOAL" }),
+  },
+  {
+    pattern: /-team-to-advance-to-\d{4}-round-of-16$/,
+    config: () => ({ title: "ベスト16に進むクラブは？", category: "special", code: "R16" }),
+  },
+  {
+    pattern: /-team-to-advance-to-\d{4}-quarters$/,
+    config: () => ({ title: "ベスト8に進むクラブは？", category: "special", code: "QF" }),
+  },
+  {
+    pattern: /-team-to-advance-to-\d{4}-semis$/,
+    config: () => ({ title: "ベスト4に進むクラブは？", category: "special", code: "SF" }),
+  },
+  {
+    pattern: /-team-to-advance-to-\d{4}-final$/,
+    config: () => ({ title: "決勝に進むクラブは？", category: "special", code: "FIN" }),
+  },
+  {
+    pattern: /-team-to-finish-top-(\d+)-in-league-phase$/,
+    config: (match) => ({
+      title: `リーグフェーズでトップ${match[1]}に入るクラブは？`,
+      category: "special",
+      code: `LP${match[1]}`,
+    }),
+  },
+  {
+    pattern: /-team-to-finish-(\d+)th-(\d+)th-in-league-phase$/,
+    config: (match) => ({
+      title: `リーグフェーズで${match[1]}〜${match[2]}位になるクラブは？`,
+      category: "special",
+      code: "LPMID",
+    }),
+  },
+  {
+    pattern: /-league-phase-winner$/,
+    config: () => ({ title: "リーグフェーズ1位になるクラブは？", category: "special", code: "LP1" }),
+  },
+  {
+    pattern: /-league-phase-last-place$/,
+    config: () => ({ title: "リーグフェーズ最下位になるクラブは？", category: "special", code: "LPL" }),
+  },
+  {
+    pattern: /-league-phase-most-goals-club$/,
+    config: () => ({ title: "リーグフェーズ最多得点のクラブは？", category: "special", code: "LPG" }),
+  },
+  {
+    pattern: /-league-phase-largest-goal-differential$/,
+    config: () => ({ title: "リーグフェーズ得失点差1位のクラブは？", category: "special", code: "LPGD" }),
+  },
+  {
+    pattern: /-\d{4}-2nd-place$/,
+    config: () => ({ title: "2位になるクラブは？", category: "special", code: "RU" }),
+  },
+  {
+    pattern: /-most-player-of-the-match-awards-\d{4}/,
+    config: () => ({ title: "最多マン・オブ・ザ・マッチは？", category: "special", code: "MOM" }),
+  },
 ];
 
 // "Michael Carrick out as Manchester United manager by...?"

@@ -5,7 +5,7 @@
 //
 // 取れなかったクラブは画面側で従来の色付きバッジに戻る。
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 
@@ -140,6 +140,7 @@ function slugify(english) {
 // リーグのロゴ。lib/leagues.ts のidと対応させる。
 const leaguePages = {
   epl: "Premier League",
+  ucl: "UEFA Champions League",
   laliga: "La Liga",
   bundesliga: "Bundesliga",
   seriea: "Serie A",
@@ -192,6 +193,31 @@ async function fetchLeagueLogos() {
   );
 }
 
+/** 生成済みの lib/crests.ts から、ファイルが残っているものだけ拾う。 */
+async function existingCrests(outDir) {
+  let source;
+
+  try {
+    source = await readFile(mapFile, "utf8");
+  } catch {
+    return [];
+  }
+
+  const rows = [...source.matchAll(/"(.+?)": "\/crests\/(.+?)"/g)];
+  const kept = [];
+
+  for (const [, japanese, file] of rows) {
+    try {
+      await access(path.join(outDir, file));
+      kept.push([japanese, file]);
+    } catch {
+      // ファイルが無いなら取り直す
+    }
+  }
+
+  return kept;
+}
+
 async function main() {
   // リーグのロゴだけ取り直したいことがあるので、クラブ側を飛ばせるようにしておく。
   if (process.argv.includes("--leagues")) {
@@ -206,7 +232,9 @@ async function main() {
 
   await mkdir(outDir, { recursive: true });
 
-  const found = new Map();
+  // 取得済みのぶんは飛ばす。--all を付けると全部取り直す。
+  const keepExisting = !process.argv.includes("--all");
+  const found = new Map(keepExisting ? await existingCrests(outDir) : []);
   const missing = [];
 
   for (const club of clubs) {
