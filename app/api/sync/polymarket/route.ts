@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   buildAppMarketRecordsFromEvents,
-  fetchPolymarketWorldCupEvents,
+  fetchPolymarketPremierLeagueEvents,
 } from "@/lib/polymarket";
 import { createServerSupabaseClient, hasSupabaseConfig } from "@/lib/supabase";
 
@@ -37,7 +37,7 @@ async function syncPolymarket(request: Request, mode: "cron" | "manual") {
 
   try {
     const supabase = createServerSupabaseClient({ admin: true });
-    const gammaEvents = await fetchPolymarketWorldCupEvents(500);
+    const gammaEvents = await fetchPolymarketPremierLeagueEvents(500);
     const syncedAt = new Date().toISOString();
     const apiRecords = buildAppMarketRecordsFromEvents(gammaEvents);
 

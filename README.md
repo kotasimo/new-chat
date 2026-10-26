@@ -1,6 +1,6 @@
 # Yosoku Cup
 
-無料ポイントで遊ぶワールドカップ予測ゲームです。UIは Next.js / React / TypeScript、DBは本番でも使う Supabase Postgres に統一しています。
+無料ポイントで遊ぶプレミアリーグ予測ゲームです。UIは Next.js / React / TypeScript、DBは本番でも使う Supabase Postgres に統一しています。
 
 ## 開発起動
 
@@ -38,7 +38,7 @@ NEXT_PUBLIC_CONTACT_EMAIL=""
 npm run sync:polymarket
 ```
 
-内部では `POST /api/sync/polymarket` が呼ばれ、Polymarketのワールドカップ関連市場をSupabaseへ保存します。
+内部では `POST /api/sync/polymarket` が呼ばれ、Polymarketのプレミアリーグ関連市場をSupabaseへ保存します。
 
 ## GitHub Actions で定期同期
 

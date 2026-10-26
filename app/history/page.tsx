@@ -38,7 +38,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
           <header className="history-header">
             <div>
               <h1>終了市場</h1>
-              <p>過去に表示されたワールドカップ予測市場と結果。</p>
+              <p>過去に表示されたプレミアリーグ予測市場と結果。</p>
             </div>
             <nav className="history-sort" aria-label="終了市場の並び替え">
               {sortOptions.map((option) => (

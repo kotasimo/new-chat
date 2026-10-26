@@ -66,7 +66,7 @@ export default function OpenGraphImage() {
               maxWidth: 900,
             }}
           >
-            Polymarketの予測価格を参考にした、ポイント制のワールドカップ予想ゲーム。
+            Polymarketの予測価格を参考にした、ポイント制のプレミアリーグ予想ゲーム。
           </div>
         </div>
 

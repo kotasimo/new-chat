@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Yosoku Cup",
     short_name: "Yosoku",
-    description: "無料ポイントで遊ぶワールドカップ予測ゲーム",
+    description: "無料ポイントで遊ぶプレミアリーグ予測ゲーム",
     start_url: "/",
     display: "standalone",
     background_color: "#f5f6f2",

@@ -17,7 +17,7 @@ import type {
 const tabs: Array<{ key: "all" | MarketCategory; label: string }> = [
   { key: "all", label: "すべて" },
   { key: "match", label: "勝敗予測" },
-  { key: "winner", label: "優勝国" },
+  { key: "winner", label: "優勝クラブ" },
   { key: "special", label: "特別予測" },
 ];
 
@@ -213,7 +213,7 @@ export function MarketBoard({
             <Search size={17} aria-hidden="true" />
             <input
               aria-label="マーケットを検索"
-              placeholder="マーケットを検索: フランス、得点王、PK戦..."
+              placeholder="マーケットを検索: アーセナル、得点王、降格..."
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}

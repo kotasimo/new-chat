@@ -1,4 +1,4 @@
-import { countryToJapanese } from "@/lib/countries";
+import { clubToJapanese, normalizeClubName } from "@/lib/clubs";
 import { playerNameToJapanese } from "@/lib/player-names";
 import { formatUsdVolumeAsYen } from "@/lib/volume";
 
@@ -31,6 +31,24 @@ type GammaEvent = {
   endDate?: string | null;
   closedTime?: string | null;
   markets?: GammaMarket[];
+};
+
+type Teams = {
+  home: string;
+  away: string;
+};
+
+type MatchMarketKind = {
+  titleSuffix: string;
+  note: string;
+  label: (value: string, teams: Teams) => string;
+  order: (teams: Teams) => string[];
+};
+
+type FutureEventConfig = {
+  title: string;
+  category: "winner" | "special";
+  code: string;
 };
 
 type AppMarketRecord = {
@@ -66,15 +84,15 @@ type AppMarketRecord = {
 };
 
 const GAMMA_BASE_URL = "https://gamma-api.polymarket.com";
-const FIFA_WORLD_CUP_TAG_ID = "102232";
-const WORLD_CUP_2026_TAG_ID = "102350";
+const EPL_TAG_ID = "306";
+// ほぼ取引されていない選択肢と、0.5のまま置かれている枠を落とすための下限。
+const MIN_OUTCOME_VOLUME_USD = 100;
+const UNTOUCHED_DEFAULT_VOLUME_USD = 2000;
 
-export async function fetchPolymarketWorldCupEvents(limit = 500) {
+export async function fetchPolymarketPremierLeagueEvents(limit = 500) {
   const events = await Promise.all([
-    fetchGammaEvents(FIFA_WORLD_CUP_TAG_ID, limit, false),
-    fetchGammaEvents(WORLD_CUP_2026_TAG_ID, limit, false),
-    fetchGammaEvents(FIFA_WORLD_CUP_TAG_ID, limit, true),
-    fetchGammaEvents(WORLD_CUP_2026_TAG_ID, limit, true),
+    fetchGammaEvents(EPL_TAG_ID, limit, false),
+    fetchGammaEvents(EPL_TAG_ID, limit, true),
   ]);
 
   const bySlug = new Map<string, GammaEvent>();
@@ -94,7 +112,15 @@ export function buildAppMarketRecordsFromEvents(events: GammaEvent[]) {
 
   for (const event of events) {
     if (isMainMatchEvent(event)) {
-      const record = toMatchResultRecord(event, 10 + records.length * 10);
+      const record = toMatchMarketRecord(event, matchResultKind, 10 + records.length * 10);
+      if (record) records.push(record);
+      continue;
+    }
+
+    const subKind = matchSubEventKind(event);
+
+    if (subKind) {
+      const record = toMatchMarketRecord(event, subKind, 300 + records.length * 10);
       if (record) records.push(record);
       continue;
     }
@@ -104,7 +130,7 @@ export function buildAppMarketRecordsFromEvents(events: GammaEvent[]) {
       continue;
     }
 
-    if (isUsefulFutureEvent(event)) {
+    if (futureEventConfig(event)) {
       const record = toFutureGroupedRecord(event, 500 + records.length * 10);
       if (record) records.push(record);
     }
@@ -113,7 +139,12 @@ export function buildAppMarketRecordsFromEvents(events: GammaEvent[]) {
   return records;
 }
 
-function toMatchResultRecord(event: GammaEvent, sortOrder: number): AppMarketRecord | null {
+// 勝敗・ハーフタイム・先制点は「イベント内の各マーケットが選択肢1つ」という同じ形をしている。
+function toMatchMarketRecord(
+  event: GammaEvent,
+  kind: MatchMarketKind,
+  sortOrder: number,
+): AppMarketRecord | null {
   const teams = parseMatchTitle(event.title);
   if (!teams) return null;
 
@@ -124,7 +155,7 @@ function toMatchResultRecord(event: GammaEvent, sortOrder: number): AppMarketRec
       const yesPrice = getOutcomePrice(market, "Yes");
 
       return {
-        label: matchResultLabel(market.groupItemTitle || market.question, teams),
+        label: kind.label(market.groupItemTitle || market.question, teams),
         probability: yesPrice,
         finalPrice: marketStatus(market, status).closed
           ? getOutcomePrice(market, "Yes")
@@ -144,7 +175,7 @@ function toMatchResultRecord(event: GammaEvent, sortOrder: number): AppMarketRec
       ...outcome,
       probability: total > 0 ? outcome.probability / total : outcome.probability,
     })),
-    teams,
+    kind.order(teams),
   );
   const id = `polymarket-event-${event.slug}`;
   const outcomeRows = ordered.map((outcome, index) => ({
@@ -163,9 +194,9 @@ function toMatchResultRecord(event: GammaEvent, sortOrder: number): AppMarketRec
       id,
       slug: event.slug,
       category: "match",
-      code: `${teamCode(teams.home)}-${teamCode(teams.away)}`,
-      title: `${toJa(teams.home)} vs ${toJa(teams.away)}: 試合結果は？`,
-      note: "試合結果・引き分けあり",
+      code: matchCode(event.slug, teams),
+      title: `${toJa(teams.home)} vs ${toJa(teams.away)}: ${kind.titleSuffix}`,
+      note: kind.note,
       volume_label: formatVolumeLabel(event.volume),
       source: "polymarket",
       polymarket_slug: event.slug,
@@ -186,73 +217,14 @@ function toSelectedMoreMarketRecords(event: GammaEvent, baseSortOrder: number) {
   const teams = parseMatchTitle(event.title.replace(" - More Markets", ""));
   if (!teams) return [];
 
-  const records: AppMarketRecord[] = [];
-  const advanceMarket = (event.markets ?? []).find((market) =>
-    market.question.endsWith(": Team to Advance"),
-  );
-
-  if (advanceMarket) {
-    records.push(toTeamAdvanceRecord(advanceMarket, teams, baseSortOrder - 150));
-  }
-
-  const propRecords = (event.markets ?? [])
-    .map((market, index) =>
-      toMatchPropRecord(market, teams, baseSortOrder + index + records.length),
-    )
+  return (event.markets ?? [])
+    .map((market, index) => toMatchPropRecord(market, teams, baseSortOrder + index))
     .filter((record): record is AppMarketRecord => record !== null);
-
-  records.push(...propRecords);
-
-  return records;
-}
-
-function toTeamAdvanceRecord(
-  market: GammaMarket,
-  teams: { home: string; away: string },
-  sortOrder: number,
-): AppMarketRecord {
-  const status = marketStatus(market);
-  const lockAt = market.endDate ?? null;
-  const outcomes = parseGammaOutcomes(market, status.closed);
-  const id = `polymarket-market-${market.slug}`;
-  const outcomeRows = outcomes.map((outcome, index) => ({
-    id: `${id}-${index}`,
-    market_id: id,
-    label: toJa(outcome.label),
-    probability: clampProbability(outcome.probability),
-    final_price: outcome.finalPrice,
-    winning: status.closed && outcome.finalPrice !== null && outcome.finalPrice >= 0.999,
-    side: outcomeSide(index),
-    sort_order: index,
-  }));
-
-  return {
-    market: {
-      id,
-      slug: market.slug,
-      category: "match",
-      code: `${teamCode(teams.home)}-${teamCode(teams.away)}`,
-      title: `${toJa(teams.home)} vs ${toJa(teams.away)}: 勝ち上がるのは？`,
-      note: "延長・PK込み",
-      volume_label: formatVolumeLabel(market.volumeNum ?? market.volume),
-      source: "polymarket",
-      polymarket_slug: market.slug,
-      active: true,
-      closed: status.closed,
-      closed_at: status.closedAt,
-      starts_at: lockAt,
-      lock_at: lockAt,
-      winning_outcome_id: winningOutcomeId(outcomeRows),
-      sort_order: sortOrder,
-      synced_at: new Date().toISOString(),
-    },
-    outcomes: outcomeRows,
-  };
 }
 
 function toMatchPropRecord(
   market: GammaMarket,
-  teams: { home: string; away: string },
+  teams: Teams,
   sortOrder: number,
 ): AppMarketRecord | null {
   const title = matchPropTitle(market.slug, teams);
@@ -280,7 +252,7 @@ function toMatchPropRecord(
       id,
       slug: market.slug,
       category: "match",
-      code: `${teamCode(teams.home)}-${teamCode(teams.away)}`,
+      code: matchCode(market.slug, teams),
       title,
       note: "試合関連",
       volume_label: formatVolumeLabel(market.volumeNum ?? market.volume),
@@ -300,6 +272,9 @@ function toMatchPropRecord(
 }
 
 function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketRecord | null {
+  const config = futureEventConfig(event);
+  if (!config) return null;
+
   const status = eventStatus(event);
   const topMarkets = (event.markets ?? [])
     .map((market) => ({
@@ -309,8 +284,9 @@ function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketR
         ? getOutcomePrice(market, "Yes")
         : null,
       label: toJa(market.groupItemTitle || extractFutureItem(market.question)),
+      placeholder: isPlaceholderMarket(market),
     }))
-    .filter((item) => item.probability > 0.001 && item.label && !item.label.includes("Team "))
+    .filter((item) => item.probability > 0.001 && item.label && !item.placeholder)
     .sort((a, b) => b.probability - a.probability)
     .slice(0, 10);
 
@@ -332,9 +308,9 @@ function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketR
     market: {
       id,
       slug: event.slug,
-      category: event.slug === "world-cup-winner" ? "winner" : "special",
-      code: futureCode(event.slug),
-      title: translateFutureTitle(event.title),
+      category: config.category,
+      code: config.code,
+      title: config.title,
       note: "Polymarketイベントを選択肢に整理",
       volume_label: formatVolumeLabel(event.volume),
       source: "polymarket",
@@ -352,14 +328,53 @@ function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketR
   };
 }
 
+const matchResultKind: MatchMarketKind = {
+  titleSuffix: "試合結果は？",
+  note: "勝ち・引き分け・負け",
+  label: (value, teams) => {
+    if (value.includes("Draw")) return "引き分け";
+    if (value.includes(teams.home)) return `${toJa(teams.home)}勝利`;
+    if (value.includes(teams.away)) return `${toJa(teams.away)}勝利`;
+    return "";
+  },
+  order: (teams) => [`${toJa(teams.home)}勝利`, "引き分け", `${toJa(teams.away)}勝利`],
+};
+
+const halftimeResultKind: MatchMarketKind = {
+  titleSuffix: "ハーフタイムでリードしているのは？",
+  note: "前半終了時点",
+  label: (value, teams) => {
+    if (value.includes("Draw")) return "引き分け";
+    if (value.includes(teams.home)) return `${toJa(teams.home)}リード`;
+    if (value.includes(teams.away)) return `${toJa(teams.away)}リード`;
+    return "";
+  },
+  order: (teams) => [`${toJa(teams.home)}リード`, "引き分け", `${toJa(teams.away)}リード`],
+};
+
+const firstTeamToScoreKind: MatchMarketKind = {
+  titleSuffix: "先制するのは？",
+  note: "無得点のまま終わる場合あり",
+  label: (value, teams) => {
+    if (value.includes("Neither")) return "どちらも無得点";
+    if (value.includes(teams.home)) return toJa(teams.home);
+    if (value.includes(teams.away)) return toJa(teams.away);
+    return "";
+  },
+  order: (teams) => [toJa(teams.home), toJa(teams.away), "どちらも無得点"],
+};
+
+function matchSubEventKind(event: GammaEvent) {
+  if (event.title.endsWith(" - Halftime Result")) return halftimeResultKind;
+  if (event.title.endsWith(" - First Team to Score")) return firstTeamToScoreKind;
+  return null;
+}
+
 function isMainMatchEvent(event: GammaEvent) {
   return (
     /^.+ vs\. .+$/.test(event.title) &&
     !event.title.includes(" - ") &&
-    !event.title.includes("H2H") &&
-    !event.title.includes("Goal Contributions") &&
-    !event.title.includes("Goals") &&
-    !event.title.includes(" to Play ")
+    !event.title.includes("H2H")
   );
 }
 
@@ -367,17 +382,107 @@ function isMoreMarketsEvent(event: GammaEvent) {
   return /^.+ vs\. .+ - More Markets$/.test(event.title);
 }
 
-function isUsefulFutureEvent(event: GammaEvent) {
-  return [
-    "world-cup-winner",
-    "which-continent-will-win-the-world-cup",
-    "world-cup-golden-boot-winner",
-    "world-cup-golden-ball-winner",
-    "world-cup-nation-to-reach-final",
-    "world-cup-nation-to-reach-semifinals",
-    "world-cup-nation-to-reach-quarterfinals",
-  ].includes(event.slug);
+// シーズン通年のマーケットは取り込むものを絞る。優勝だけはslugに生成時刻が付くので正規表現で拾う。
+function futureEventConfig(event: GammaEvent): FutureEventConfig | null {
+  if (/^epl-\d{4}-champion/.test(event.slug)) {
+    return { title: "優勝クラブは？", category: "winner", code: "EPL" };
+  }
+
+  return futureEvents[event.slug] ?? null;
 }
+
+const futureEvents: Record<string, FutureEventConfig> = {
+  "2027-soccer-premier-league-runner-up": {
+    title: "2位になるクラブは？",
+    category: "special",
+    code: "RU",
+  },
+  "premier-league-3rd-place-finish-2026-27": {
+    title: "3位になるクラブは？",
+    category: "special",
+    code: "P3",
+  },
+  "epl-2026-27-top-2-finishers": {
+    title: "トップ2に入るクラブは？",
+    category: "special",
+    code: "TOP2",
+  },
+  "premier-league-top-4-finishers-2026-27": {
+    title: "トップ4に入るクラブは？",
+    category: "special",
+    code: "TOP4",
+  },
+  "premier-league-top-5-finishers-2026-27": {
+    title: "トップ5に入るクラブは？",
+    category: "special",
+    code: "TOP5",
+  },
+  "premier-league-top-6-finishers-2026-27": {
+    title: "トップ6に入るクラブは？",
+    category: "special",
+    code: "TOP6",
+  },
+  "premier-league-top-10-finishers-2026-27": {
+    title: "トップ10に入るクラブは？",
+    category: "special",
+    code: "TOP10",
+  },
+  "premier-league-teams-relegated-2026-27": {
+    title: "降格するクラブは？",
+    category: "special",
+    code: "REL",
+  },
+  "premier-league-last-place-finisher-2026-27": {
+    title: "最下位になるクラブは？",
+    category: "special",
+    code: "LAST",
+  },
+  "premier-league-17th-place-relegation-survivor-2026-27": {
+    title: "17位（残留ライン）になるクラブは？",
+    category: "special",
+    code: "P17",
+  },
+  "efl-championship-team-promoted-to-epl-2026-27": {
+    title: "プレミアリーグに昇格するクラブは？",
+    category: "special",
+    code: "PRO",
+  },
+  "epl-team-to-qualify-for-the-2027-28-uefa-champions-league": {
+    title: "チャンピオンズリーグ出場権を取るクラブは？",
+    category: "special",
+    code: "UCL",
+  },
+  "epl-team-to-qualify-for-the-2027-28-uefa-europa-league": {
+    title: "ヨーロッパリーグ出場権を取るクラブは？",
+    category: "special",
+    code: "UEL",
+  },
+  "epl-team-to-qualify-for-the-2027-28-uefa-conference-league": {
+    title: "カンファレンスリーグ出場権を取るクラブは？",
+    category: "special",
+    code: "UECL",
+  },
+  "premier-league-top-goalscorer-2026-27": {
+    title: "得点王は？",
+    category: "special",
+    code: "GOAL",
+  },
+  "premier-league-most-assists-2026-27": {
+    title: "最多アシストは？",
+    category: "special",
+    code: "AST",
+  },
+  "premier-league-most-clean-sheets-2026-27": {
+    title: "最多クリーンシートのGKは？",
+    category: "special",
+    code: "CS",
+  },
+  "premier-league-team-most-clean-sheets-2026-27": {
+    title: "最多クリーンシートのクラブは？",
+    category: "special",
+    code: "TCS",
+  },
+};
 
 function parseGammaOutcomes(market: GammaMarket, closed = false) {
   const labels = safeJsonArray(market.outcomes);
@@ -460,36 +565,37 @@ function outcomeSide(index: number): "yes" | "no" | "other" {
 }
 
 function parseMatchTitle(title: string) {
-  const match = title.match(/^(.+) vs\. (.+)$/);
+  const match = title.match(/^(.+) vs\. (.+?)(?: - .+)?$/);
   if (!match) return null;
 
   return { home: match[1], away: match[2] };
 }
 
-function matchResultLabel(value: string, teams: { home: string; away: string }) {
-  if (value.includes("Draw")) return "引き分け";
-  if (value.includes(teams.home) || value === teams.home) return `${toJa(teams.home)}勝利`;
-  if (value.includes(teams.away) || value === teams.away) return `${toJa(teams.away)}勝利`;
-  return "";
-}
-
-function matchPropTitle(slug: string, teams: { home: string; away: string }) {
+function matchPropTitle(slug: string, teams: Teams) {
   const prefix = `${toJa(teams.home)} vs ${toJa(teams.away)}`;
 
   if (/-\d{4}-\d{2}-\d{2}-total-2pt5$/.test(slug)) {
     return `${prefix}: 合計3点以上？`;
   }
 
+  if (/-\d{4}-\d{2}-\d{2}-total-3pt5$/.test(slug)) {
+    return `${prefix}: 合計4点以上？`;
+  }
+
   if (/-\d{4}-\d{2}-\d{2}-btts$/.test(slug)) {
     return `${prefix}: 両チーム得点する？`;
+  }
+
+  if (/-\d{4}-\d{2}-\d{2}-btts-first-half$/.test(slug)) {
+    return `${prefix}: 前半に両チーム得点する？`;
   }
 
   if (/-\d{4}-\d{2}-\d{2}-first-half-total-0pt5$/.test(slug)) {
     return `${prefix}: 前半に1点以上入る？`;
   }
 
-  if (/-\d{4}-\d{2}-\d{2}-penalty-shootout$/.test(slug)) {
-    return `${prefix}: PK戦になる？`;
+  if (/-\d{4}-\d{2}-\d{2}-first-half-total-1pt5$/.test(slug)) {
+    return `${prefix}: 前半に2点以上入る？`;
   }
 
   return null;
@@ -497,78 +603,59 @@ function matchPropTitle(slug: string, teams: { home: string; away: string }) {
 
 function orderMatchOutcomes(
   outcomes: Array<{ label: string; probability: number; finalPrice?: number | null }>,
-  teams: { home: string; away: string },
+  order: string[],
 ) {
-  const home = `${toJa(teams.home)}勝利`;
-  const away = `${toJa(teams.away)}勝利`;
-  const draw = "引き分け";
-  const order = [home, draw, away];
-
   return outcomes.sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
-}
-
-function translateFutureTitle(title: string) {
-  const normalized = title.trim();
-
-  const translations: Record<string, string> = {
-    "World Cup Winner": "優勝国は？",
-    "Which continent will win the World Cup?": "優勝国の大陸は？",
-    "World Cup: Golden Boot Winner": "得点王は？",
-    "World Cup: Golden Ball Winner": "大会MVPは？",
-    "World Cup: Nation to Reach Final": "決勝に進む国は？",
-    "World Cup: Nation To Reach Semifinals": "準決勝に進む国は？",
-    "World Cup: Nation To Reach Quarterfinals": "準々決勝に進む国は？",
-    "World Cup: Nation To Reach Round of 16": "ベスト16に進む国は？",
-    "World Cup: Nation of Top Goalscorer": "得点王の国籍は？",
-    "World Cup: Top Scorer (Nation)": "得点王の国籍は？",
-    "World Cup: Number of Missed Penalties": "失敗PKの数は？",
-    "World Cup: No. of Matches Decided by Penalty Shootout": "PK戦で決まる試合数は？",
-    "World Cup: Unbeaten Champion?": "無敗優勝はある？",
-  };
-
-  return translations[normalized] ?? normalized;
 }
 
 function extractFutureItem(question: string) {
   return question
     .replace(/^Will /, "")
-    .replace(/ win the 2026 FIFA World Cup\?$/, "")
-    .replace(/ be the top goalscorer at the 2026 FIFA World Cup\?$/, "")
-    .replace(/ win the Golden Ball at the 2026 FIFA World Cup$/, "")
-    .replace(/^Will a player representing /, "")
-    .replace(/ be the top goalscorer at the 2026 FIFA World Cup$/, "")
-    .replace(/^Will /, "")
-    .replace(/ reach the final of the 2026 FIFA World Cup$/, "")
-    .replace(/ reach the semifinals of the 2026 FIFA World Cup$/, "")
-    .replace(/ reach the quarterfinals of the 2026 FIFA World Cup$/, "")
-    .replace(/ reach the Round of 16 at the 2026 FIFA World Cup$/, "")
+    .replace(/ win the \d{4}-\d{2} English Premier League \(EPL\) Championship\?$/, "")
+    .replace(/ (be|finish|qualify|score) .*$/, "")
     .replace(/\?$/, "")
     .trim();
 }
 
-function futureCode(slug: string) {
-  if (slug.includes("winner")) return "CUP";
-  if (slug.includes("golden-boot")) return "GB";
-  if (slug.includes("golden-ball")) return "MVP";
-  if (slug.includes("semifinals")) return "SF";
-  if (slug.includes("quarterfinals")) return "QF";
-  if (slug.includes("final")) return "FIN";
-  return "WC";
+// Polymarketは枠だけ先に作った Team A / Player AB / Other を0.5のまま混ぜてくる。
+// ラベルの付け方はイベントごとに違うので、ほとんど取引されていない選択肢をまとめて落とす。
+function isPlaceholderMarket(market: GammaMarket) {
+  const label = (market.groupItemTitle || market.question).trim();
+
+  const volume = Number(market.volumeNum ?? market.volume ?? 0);
+  const probability = getOutcomePrice(market, "Yes");
+
+  return (
+    /^(Team|Player) [A-Z]{1,2}$/.test(label) ||
+    volume < MIN_OUTCOME_VOLUME_USD ||
+    (Math.abs(probability - 0.5) <= 0.03 && volume < UNTOUCHED_DEFAULT_VOLUME_USD)
+  );
 }
 
 function toJa(value: string) {
   const trimmed = value.trim();
-  const nonPlayerName = nameMap[trimmed] ?? countryToJapanese(trimmed);
+  const clubName = nameMap[trimmed] ?? clubToJapanese(trimmed);
 
-  if (nonPlayerName !== trimmed) {
-    return nonPlayerName;
+  if (clubName !== trimmed) {
+    return clubName;
   }
 
   return playerNameToJapanese(trimmed);
 }
 
+// 対戦カードのslug (epl-che-mun-2026-10-31...) から検索しやすい短縮コードを作る。
+function matchCode(slug: string, teams: Teams) {
+  const match = slug.match(/^epl-([a-z]{3})-([a-z]{3})-/);
+
+  if (match) {
+    return `${match[1].toUpperCase()}-${match[2].toUpperCase()}`;
+  }
+
+  return `${teamCode(teams.home)}-${teamCode(teams.away)}`;
+}
+
 function teamCode(value: string) {
-  return value
+  return normalizeClubName(value)
     .replace(/[^a-zA-Z]/g, "")
     .slice(0, 3)
     .toUpperCase();
@@ -594,13 +681,7 @@ function safeJsonArray(value?: string) {
 }
 
 const nameMap: Record<string, string> = {
-  Africa: "アフリカ",
-  "Africa (CAF)": "アフリカ",
-  Europe: "ヨーロッパ",
-  "Europe (UEFA)": "ヨーロッパ",
-  "South America (CONMEBOL)": "南米",
-  "North America (CONCACAF)": "北中米",
-  "Asia (AFC)": "アジア",
-  "Oceania (OCF)": "オセアニア",
   Other: "その他",
+  Neither: "どちらも無得点",
+  Draw: "引き分け",
 };
