@@ -6,8 +6,12 @@ export function probabilityToOdds(probability: number, houseFactor = 1) {
   return Math.max(1.01, houseFactor / probability);
 }
 
+export function formatOddsValue(odds: number) {
+  return odds.toFixed(odds >= 10 ? 1 : 2);
+}
+
 export function formatOdds(odds: number) {
-  return `${odds.toFixed(odds >= 10 ? 1 : 2)}倍`;
+  return `${formatOddsValue(odds)}倍`;
 }
 
 export function formatProbability(probability: number) {

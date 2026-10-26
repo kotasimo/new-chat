@@ -1,4 +1,4 @@
-import { formatOdds, formatProbability, probabilityToOdds } from "@/lib/odds";
+import { formatOddsValue, formatProbability, probabilityToOdds } from "@/lib/odds";
 import type { Market, Outcome, SelectedPrediction } from "@/lib/types";
 import type { CSSProperties } from "react";
 
@@ -129,7 +129,10 @@ function OutcomeButton({
       <span className="outcome-dot" aria-hidden="true" />
       <strong className="outcome-label">{outcome.label}</strong>
       <span className="outcome-probability">{formatProbability(outcome.probability)}</span>
-      <span className="outcome-odds">{formatOdds(odds)}</span>
+      <span className="outcome-odds" title={`100pt賭けて当たると${Math.round(odds * 100)}pt戻ります`}>
+        <strong>{formatOddsValue(odds)}</strong>
+        <small>倍</small>
+      </span>
       {showRowBar ? (
         <span className="outcome-meter" aria-hidden="true">
           <span style={{ width: `${Math.max(2, Math.round(outcome.probability * 100))}%` }} />

@@ -954,13 +954,43 @@ button {
 }
 
 .outcome-odds {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--muted);
-  background: #f1f4f0;
-  border-radius: 6px;
-  padding: 4px 8px;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  min-width: 84px;
+  padding: 7px 10px;
+  border: 1px solid #bfe3d3;
+  border-radius: 8px;
+  background: var(--green-soft);
+  color: #0f6b4a;
   white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.outcome-odds strong {
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.outcome-odds small {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.outcome-button:hover:not(:disabled) .outcome-odds,
+.outcome-button.selected .outcome-odds {
+  background: #15805a;
+  border-color: #15805a;
+  color: #ffffff;
+}
+
+.outcome-button:disabled .outcome-odds {
+  background: #eef0ed;
+  border-color: #dde3dc;
+  color: var(--muted);
 }
 
 .outcome-meter {
