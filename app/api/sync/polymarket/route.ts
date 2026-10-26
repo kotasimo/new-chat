@@ -45,12 +45,15 @@ async function syncPolymarket(request: Request, mode: "cron" | "manual") {
       ? leagues.filter((league) => league.id === requestedLeague)
       : leagues;
     const syncedAt = new Date().toISOString();
-    const apiRecords = [];
-
-    for (const league of targetLeagues) {
-      const gammaEvents = await fetchPolymarketLeagueEvents(league);
-      apiRecords.push(...buildAppMarketRecordsFromEvents(gammaEvents, league.id));
-    }
+    // 5リーグを順番に取ると実行時間の上限に当たるので、取得だけ並列に回す。
+    const apiRecords = (
+      await Promise.all(
+        targetLeagues.map(async (league) => {
+          const gammaEvents = await fetchPolymarketLeagueEvents(league);
+          return buildAppMarketRecordsFromEvents(gammaEvents, league.id);
+        }),
+      )
+    ).flat();
 
   const records = apiRecords.map((record) => ({
     market: { ...record.market, synced_at: syncedAt },

@@ -98,7 +98,7 @@ const GAMMA_BASE_URL = "https://gamma-api.polymarket.com";
 const MIN_OUTCOME_VOLUME_USD = 100;
 const UNTOUCHED_DEFAULT_VOLUME_USD = 2000;
 
-export async function fetchPolymarketLeagueEvents(league: LeagueInfo, limit = 400) {
+export async function fetchPolymarketLeagueEvents(league: LeagueInfo, limit = 300) {
   const events = await Promise.all(
     league.tagIds.flatMap((tagId) => [
       fetchGammaEvents(tagId, limit, false),
