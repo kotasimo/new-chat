@@ -23,7 +23,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <div className="app-shell">
-      <AppSidebar />
+      <AppSidebar activeLeague={league} />
       <MarketBoard
         activeLeague={league}
         initialBalance={10000}

@@ -7,10 +7,13 @@ import {
   Search,
   Trophy,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
+import { leagueLogos } from "@/lib/league-logos";
+import { leagues, type LeagueId } from "@/lib/leagues";
 
 const navItems = [
   { label: "予測する", href: "/", icon: Trophy },
@@ -21,7 +24,11 @@ const navItems = [
 
 const DISPLAY_NAME_CACHE_KEY = "yosoku_display_name";
 
-export function AppSidebar() {
+type AppSidebarProps = {
+  activeLeague?: LeagueId | null;
+};
+
+export function AppSidebar({ activeLeague = null }: AppSidebarProps) {
   const pathname = usePathname();
   const [points, setPoints] = useState<number | null>(null);
   const [displayName, setDisplayName] = useState(() => {
@@ -148,6 +155,39 @@ export function AppSidebar() {
             >
               <Icon size={16} aria-hidden="true" />
               <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="nav-title">リーグ</div>
+      <nav className="nav-list league-nav" aria-label="リーグ">
+        <Link
+          className={`nav-item ${pathname === "/" && !activeLeague ? "active" : ""}`}
+          href="/"
+        >
+          <span className="league-logo-slot" aria-hidden="true">
+            ★
+          </span>
+          <span>注目</span>
+        </Link>
+        {leagues.map((league) => {
+          const logo = leagueLogos[league.id];
+
+          return (
+            <Link
+              className={`nav-item ${activeLeague === league.id ? "active" : ""}`}
+              href={`/?league=${league.id}`}
+              key={league.id}
+            >
+              <span className="league-logo-slot" aria-hidden="true">
+                {logo ? (
+                  <Image src={logo} alt="" width={18} height={18} />
+                ) : (
+                  league.label.slice(0, 1)
+                )}
+              </span>
+              <span>{league.label}</span>
             </Link>
           );
         })}

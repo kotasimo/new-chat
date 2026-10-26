@@ -108,6 +108,27 @@ button {
   font-weight: 700;
 }
 
+.league-nav {
+  margin-bottom: 4px;
+}
+
+.league-logo-slot {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.league-logo-slot img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
 .sidebar-profile {
   color: var(--ink);
   display: grid;

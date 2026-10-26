@@ -1,5 +1,5 @@
-// クラブのエンブレムをWikipediaから1回だけ取ってきて public/crests に保存し、
-// lib/crests.ts を書き出す。実行時はこの生成物だけを使うので、外部へは取りに行かない。
+// クラブのエンブレムとリーグのロゴをWikipediaから1回だけ取ってきて public/ に保存し、
+// lib/crests.ts と lib/league-logos.ts を書き出す。実行時はこの生成物だけを使う。
 //
 //   node scripts/fetch-crests.mjs
 //
@@ -137,7 +137,68 @@ function slugify(english) {
     .replace(/^-|-$/g, "");
 }
 
+// リーグのロゴ。lib/leagues.ts のidと対応させる。
+const leaguePages = {
+  epl: "Premier League",
+  laliga: "La Liga",
+  bundesliga: "Bundesliga",
+  seriea: "Serie A",
+  // "J1 League" の項目には画像が無いのでリーグ全体の項目から取る。
+  j1: "J.League",
+};
+
+async function saveImage(url, file) {
+  const image = await get(url);
+  if (!image?.ok) return false;
+
+  const resized = await sharp(Buffer.from(await image.arrayBuffer()))
+    .resize(96, 96, { fit: "inside", withoutEnlargement: true })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+
+  await writeFile(file, resized);
+
+  return true;
+}
+
+async function fetchLeagueLogos() {
+  const dir = path.join(root, "public", "leagues");
+  await mkdir(dir, { recursive: true });
+
+  const found = new Map();
+
+  for (const [id, title] of Object.entries(leaguePages)) {
+    const page = await summary(title);
+    const url = page && page.type === "standard" ? imageUrl(page) : "";
+
+    if (url && (await saveImage(url, path.join(dir, `${id}.png`)))) {
+      found.set(id, `/leagues/${id}.png`);
+      console.log(`${id.padEnd(12)} ${title}`);
+    } else {
+      console.log(`${id.padEnd(12)} 取得できず`);
+    }
+  }
+
+  const entries = [...found.entries()]
+    .map(([id, file]) => `  ${id}: ${JSON.stringify(file)},`)
+    .join("\n");
+
+  await writeFile(
+    path.join(root, "lib", "league-logos.ts"),
+    "// scripts/fetch-crests.mjs の生成物。手で書き換えないで、スクリプトを実行し直す。\n" +
+      'import type { LeagueId } from "@/lib/leagues";\n\n' +
+      `export const leagueLogos: Partial<Record<LeagueId, string>> = {\n${entries}\n};\n`,
+    "utf8",
+  );
+}
+
 async function main() {
+  // リーグのロゴだけ取り直したいことがあるので、クラブ側を飛ばせるようにしておく。
+  if (process.argv.includes("--leagues")) {
+    await fetchLeagueLogos();
+    return;
+  }
+
   const source = await readFile(path.join(root, "lib", "clubs.ts"), "utf8");
   const clubs = [...source.matchAll(/\{ english: "(.+?)", japanese: "(.+?)" \}/g)].map(
     ([, english, japanese]) => ({ english, japanese }),
@@ -190,6 +251,9 @@ async function main() {
 
   console.log(`\n${found.size} crests saved, ${missing.length} missing`);
   if (missing.length) console.log(`missing: ${missing.join(", ")}`);
+
+  console.log("\nリーグのロゴ");
+  await fetchLeagueLogos();
 }
 
 main();

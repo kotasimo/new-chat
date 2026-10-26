@@ -1,14 +1,13 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import Link from "next/link";
 import type { MouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MarketCard } from "@/components/market-card";
 import { PredictionPanel } from "@/components/prediction-panel";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
 import type { MarketSource } from "@/lib/data";
-import { leagueLabel, leagues, type LeagueId } from "@/lib/leagues";
+import { leagueLabel, type LeagueId } from "@/lib/leagues";
 import { fixtureKey, marketTypeRank, parseFixture } from "@/lib/market-type";
 import type {
   Market,
@@ -301,21 +300,6 @@ export function MarketBoard({
         ) : null}
 
         <div className="tab-row">
-          <nav className="tabs league-tabs" aria-label="リーグ">
-            <Link className={`tab-button ${activeLeague ? "" : "active"}`} href="/">
-              注目
-            </Link>
-            {leagues.map((league) => (
-              <Link
-                className={`tab-button ${activeLeague === league.id ? "active" : ""}`}
-                href={`/?league=${league.id}`}
-                key={league.id}
-              >
-                {league.label}
-              </Link>
-            ))}
-          </nav>
-
           <select
             aria-label="マーケット種別"
             className={`category-select ${activeTab === "all" ? "" : "active"}`}
