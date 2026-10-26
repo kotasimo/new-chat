@@ -178,6 +178,15 @@ export function AppSidebar() {
         <small>この端末に予想履歴を保存しています。</small>
       </div>
 
+      <p className="sidebar-note">
+        <strong>無料ポイントの予想ゲーム。</strong>
+        現金・暗号資産・換金はありません。倍率は
+        <a href="https://polymarket.com" target="_blank" rel="noreferrer">
+          polymarket.com
+        </a>
+        の予測価格から自動換算しています。
+      </p>
+
       <nav className="sidebar-legal" aria-label="サイト情報">
         <Link href="/guide">遊び方</Link>
         <Link href="/terms">利用規約</Link>

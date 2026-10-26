@@ -267,20 +267,6 @@ export function MarketBoard({
           </button>
         </div>
 
-        <section className="hero">
-          <p>
-            <strong>無料ポイントの予想ゲーム。</strong>
-            現金・暗号資産・換金はありません。倍率は
-            <a href="https://polymarket.com" target="_blank" rel="noreferrer">
-              polymarket.com
-            </a>
-            の予測価格から自動換算しています。
-          </p>
-          <Link className="hero-guide-link" href="/guide">
-            遊び方 →
-          </Link>
-        </section>
-
         {periodicBonus?.available ? (
           <section className="bonus-card">
             <div>

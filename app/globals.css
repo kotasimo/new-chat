@@ -271,53 +271,27 @@ button {
   display: none;
 }
 
-.hero {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  padding: 10px 14px;
-  margin-bottom: 14px;
-}
-
-.hero p {
-  margin: 0;
+.sidebar-note {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 11.5px;
+  line-height: 1.65;
 }
 
-.hero p strong {
+.sidebar-note strong {
+  display: block;
   color: var(--ink);
+  font-size: 12px;
   font-weight: 800;
 }
 
-.hero a {
+.sidebar-note a {
   color: var(--ink);
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-
-.hero-guide-link {
-  flex: 0 0 auto;
-  margin-left: auto;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 6px 13px;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.hero-guide-link:hover {
-  border-color: #15805a;
-  background: var(--green-soft);
-  color: #0f6b4a;
 }
 
 .bonus-card {
@@ -1611,6 +1585,7 @@ button.fixture:focus-visible .fixture-more {
   .nav-title,
   .nav-item span:not(.status-dot),
   .sidebar-legal,
+  .sidebar-note,
   .sidebar-profile span,
   .sidebar-profile strong,
   .sidebar-profile small,
@@ -1976,15 +1951,7 @@ button.fixture:focus-visible .fixture-more {
     justify-content: space-between;
   }
 
-  .hero {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-  }
 
-  .hero-guide-link {
-    margin-left: 0;
-  }
 
   .bonus-card {
     align-items: stretch;
