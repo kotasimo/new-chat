@@ -420,6 +420,102 @@ button {
   font-size: 12px;
 }
 
+/* ホーム: 自分の状況 */
+.my-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--line);
+  margin-bottom: 18px;
+}
+
+.my-strip div {
+  background: var(--panel);
+  padding: 11px 14px;
+}
+
+.my-strip span {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.my-strip strong {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.my-strip strong.up { color: #0f6b4a; }
+.my-strip strong.down { color: #b3261e; }
+
+/* ホーム: 日付の切り替え */
+.day-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  margin-bottom: 14px;
+}
+
+.day-tab {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  padding: 7px 14px;
+  color: #37403b;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.day-tab strong {
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.day-tab small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.day-tab.active {
+  border-color: #111;
+  background: #111;
+  color: #fff;
+}
+
+.day-tab.active small {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* ホーム: リーグごとのまとまり */
+.day-group {
+  margin-bottom: 18px;
+}
+
+.day-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin: 0 0 9px;
+  font-size: 14px;
+}
+
+.day-group-head small {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
 .market-list {
   display: grid;
   gap: 10px;

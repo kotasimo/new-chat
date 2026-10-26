@@ -19,10 +19,17 @@ export async function GET(request: Request) {
     const periodicBonus = getPeriodicBonusState(profile);
     const predictionHistory = await getDemoPredictionHistory(profile.id, 100);
 
+    // 自分より上の人数を数えて順位にする。同点は同じ順位になる。
+    const { count } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .gt("points", profile.points);
+
     return NextResponse.json({
       profile,
       periodicBonus,
       predictionHistory,
+      rank: (count ?? 0) + 1,
     });
   } catch {
     return NextResponse.json(

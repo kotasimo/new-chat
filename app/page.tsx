@@ -18,7 +18,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const league = isLeagueId(params?.league) ? params.league : null;
   const [{ markets, source }, upcoming] = await Promise.all([
     league ? getHomeMarkets(league) : getFeaturedMarkets(),
-    league ? Promise.resolve([]) : getUpcomingFixtures(),
+    league ? Promise.resolve([]) : getUpcomingFixtures(200),
   ]);
 
   return (

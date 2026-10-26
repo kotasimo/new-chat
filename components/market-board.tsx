@@ -3,6 +3,7 @@
 import { Search, X } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { HomeSections } from "@/components/home-sections";
 import { MarketCard } from "@/components/market-card";
 import { PredictionPanel } from "@/components/prediction-panel";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
@@ -50,6 +51,8 @@ export function MarketBoard({
   const [selectedPrediction, setSelectedPrediction] = useState<SelectedPrediction | null>(null);
   const [balance, setBalance] = useState(initialBalance);
   const [predictionHistory, setPredictionHistory] = useState(initialPredictionHistory);
+  const [fullHistory, setFullHistory] = useState<PredictionHistoryItem[]>([]);
+  const [rank, setRank] = useState<number | null>(null);
   const [guestLoading, setGuestLoading] = useState(true);
   const [guestReady, setGuestReady] = useState(false);
   const [guestError, setGuestError] = useState("");
@@ -86,6 +89,8 @@ export function MarketBoard({
         if (!ignore) {
           setBalance(result.profile.points);
           setPredictionHistory(result.predictionHistory.slice(0, 8));
+          setFullHistory(result.predictionHistory);
+          setRank(typeof result.rank === "number" ? result.rank : null);
           setPeriodicBonus({
             amount: Number(result.periodicBonus?.amount ?? 1000),
             available: Boolean(result.periodicBonus?.available),
@@ -322,25 +327,17 @@ export function MarketBoard({
         ) : null}
 
         {showUpcoming ? (
-          <>
-            <div className="section-head">
-              <h2>まもなく締切の試合</h2>
-              <div>
-                <span>キックオフが近い順</span>
-              </div>
-            </div>
-            <div className="market-list">
-              {upcomingMarkets.map((market) => (
-                <MarketCard
-                  key={market.id}
-                  market={market}
-                  now={now}
-                  selectedOutcomeId={selectedPrediction?.outcomeId}
-                  onSelect={setSelectedPrediction}
-                />
-              ))}
-            </div>
-          </>
+          <HomeSections
+            balance={balance}
+            fixtures={upcomingMarkets}
+            history={fullHistory}
+            loading={guestLoading}
+            now={now}
+            rank={rank}
+            selectedOutcomeId={selectedPrediction?.outcomeId}
+            onSelect={setSelectedPrediction}
+            onFocusFixture={setFocusedFixture}
+          />
         ) : null}
 
         {focusedFixture ? null : (
@@ -401,6 +398,7 @@ export function MarketBoard({
         onPredictionCreated={({ nextBalance, prediction }) => {
           setBalance(nextBalance);
           setPredictionHistory((history) => [prediction, ...history].slice(0, 8));
+          setFullHistory((history) => [prediction, ...history]);
         }}
       />
     </div>
