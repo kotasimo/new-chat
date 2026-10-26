@@ -104,7 +104,6 @@ export function AccountCard() {
         <>
           <div className="account-name">
             <strong suppressHydrationWarning>{displayName}</strong>
-            <small>この端末に予想履歴を保存しています</small>
           </div>
           <button
             aria-label="アカウント名を変更"
