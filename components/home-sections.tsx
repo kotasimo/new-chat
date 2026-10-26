@@ -77,6 +77,16 @@ export function HomeSections({
 
   const stats = useMemo(() => summarize(history), [history]);
 
+  // 決着した予想を新しい順に数件だけ。開いたときに結果が目に入るようにする。
+  const settled = useMemo(
+    () =>
+      history
+        .filter((prediction) => prediction.status !== "open" && prediction.settledAt)
+        .sort((a, b) => (a.settledAt ?? "") < (b.settledAt ?? "") ? 1 : -1)
+        .slice(0, 4),
+    [history],
+  );
+
   return (
     <>
       <section className="my-strip" aria-label="自分の状況">
@@ -99,6 +109,41 @@ export function HomeSections({
           <strong>{loading || rank === null ? "—" : `${rank}位`}</strong>
         </div>
       </section>
+
+      {settled.length ? (
+        <section className="settled-section" aria-label="結果が出た予想">
+          <div className="section-head">
+            <h2>結果が出た予想</h2>
+            <div>
+              <span>新しい順</span>
+            </div>
+          </div>
+          <div className="settled-list">
+            {settled.map((prediction) => {
+              const profit = (prediction.payout ?? 0) - prediction.stake;
+
+              return (
+                <article
+                  className={`settled-row ${prediction.status}`}
+                  key={prediction.id}
+                >
+                  <span className="settled-badge">{resultLabel(prediction.status)}</span>
+                  <div className="settled-main">
+                    <strong>{prediction.outcomeLabel}</strong>
+                    <span>{prediction.marketTitle}</span>
+                  </div>
+                  <div className="settled-amount">
+                    <strong>{formatSigned(profit)}</strong>
+                    <span>
+                      {formatPoints(prediction.stake)} → {formatPoints(prediction.payout ?? 0)}
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {days.length ? (
         <>
@@ -206,6 +251,13 @@ function summarize(history: PredictionHistoryItem[]) {
   }
 
   return { open, todayProfit };
+}
+
+function resultLabel(status: PredictionHistoryItem["status"]) {
+  if (status === "won") return "的中";
+  if (status === "lost") return "外れ";
+
+  return "無効";
 }
 
 function formatSigned(value: number) {
