@@ -1,3 +1,8 @@
+"use client";
+
+import { useState } from "react";
+import { clubColorForLabel, neutralOutcomeColor } from "@/lib/club-colors";
+import { leagueLabel } from "@/lib/leagues";
 import { formatOddsValue, formatProbability, probabilityToOdds } from "@/lib/odds";
 import type { Market, Outcome, SelectedPrediction } from "@/lib/types";
 import type { CSSProperties } from "react";
@@ -9,25 +14,14 @@ type MarketCardProps = {
   onSelect: (prediction: SelectedPrediction) => void;
 };
 
+// 選択肢が多い市場は上位だけ出して、残りは畳んでおく。
+const COLLAPSED_ROWS = 5;
+
 export function MarketCard({ market, now, selectedOutcomeId, onSelect }: MarketCardProps) {
   const isSelectedMarket = market.outcomes.some((outcome) => outcome.id === selectedOutcomeId);
-  const sortedOutcomes = [...market.outcomes].sort(
-    (a, b) => b.probability - a.probability,
-  );
   const lockState = getLockState(market.lockAt, now);
   const isSelectable = !lockState.locked;
-
-  // 選択肢が排他で合計が100%前後なら1本の積み上げバーにできる。
-  // 「降格するクラブ」のように複数当たる市場は合計が1を大きく超えるので、行ごとのバーにする。
-  const total = sortedOutcomes.reduce((sum, outcome) => sum + outcome.probability, 0);
-  const isShare = total > 0 && total <= 1.2;
-
-  const rows = sortedOutcomes.map((outcome, index) => ({
-    outcome,
-    color: outcomeColor(index, sortedOutcomes.length),
-    share: total > 0 ? (outcome.probability / total) * 100 : 0,
-    lead: isShare && index === 0,
-  }));
+  const fixture = market.category === "match" ? parseFixture(market.title) : null;
 
   return (
     <article
@@ -40,114 +34,284 @@ export function MarketCard({ market, now, selectedOutcomeId, onSelect }: MarketC
         }
       }}
     >
-      <div className="market-title">
-        <div>
-          <h3>{market.title}</h3>
-          <div className="market-meta-row">
-            <span className="market-volume">{market.volumeLabel}</span>
-          </div>
-        </div>
+      <div className="card-head">
+        <span className="league-badge">{leagueLabel(market.league)}</span>
+        {market.startsAt ? (
+          <time className="kickoff" dateTime={market.startsAt}>
+            {formatKickoff(market.startsAt)}
+          </time>
+        ) : null}
         {lockState.label ? (
           <span className={`market-lock ${lockState.locked ? "locked" : ""}`}>
             {lockState.label}
           </span>
         ) : null}
+        <span className="market-volume">{market.volumeLabel}</span>
       </div>
 
-      {isShare ? (
-        <div className="market-stack" aria-hidden="true">
-          {rows.map((row) => (
-            <span
-              key={row.outcome.id}
-              style={{ width: `${row.share}%`, background: row.color }}
-            />
-          ))}
-        </div>
-      ) : null}
-
-      <div className="outcome-grid">
-        {rows.map((row) => (
-          <OutcomeButton
-            key={row.outcome.id}
-            market={market}
-            outcome={row.outcome}
-            color={row.color}
-            showRowBar={!isShare}
-            lead={row.lead}
-            selected={selectedOutcomeId === row.outcome.id}
-            disabled={lockState.locked}
-            onSelect={onSelect}
-          />
-        ))}
-      </div>
+      {fixture ? (
+        <FixtureMarket
+          market={market}
+          fixture={fixture}
+          locked={lockState.locked}
+          selectedOutcomeId={selectedOutcomeId}
+          onSelect={onSelect}
+        />
+      ) : (
+        <ListMarket
+          market={market}
+          locked={lockState.locked}
+          selectedOutcomeId={selectedOutcomeId}
+          onSelect={onSelect}
+        />
+      )}
     </article>
   );
 }
 
-type OutcomeButtonProps = {
+type Fixture = { home: string; away: string; question: string };
+
+type FixtureMarketProps = {
+  market: Market;
+  fixture: Fixture;
+  locked: boolean;
+  selectedOutcomeId?: string;
+  onSelect: (prediction: SelectedPrediction) => void;
+};
+
+/** 試合の市場。ホーム・引き分け・アウェイを横に並べる、サッカーでおなじみの形にする。 */
+function FixtureMarket({
+  market,
+  fixture,
+  locked,
+  selectedOutcomeId,
+  onSelect,
+}: FixtureMarketProps) {
+  const [homeCode, awayCode] = splitCode(market.code);
+  const homeColor = clubColorForLabel(fixture.home) ?? neutralOutcomeColor;
+  const awayColor = clubColorForLabel(fixture.away) ?? neutralOutcomeColor;
+
+  return (
+    <>
+      <div className="fixture">
+        <div className="fixture-team">
+          <Crest code={homeCode} color={homeColor} />
+          <strong>{fixture.home}</strong>
+        </div>
+        <span className="fixture-vs">vs</span>
+        <div className="fixture-team away">
+          <strong>{fixture.away}</strong>
+          <Crest code={awayCode} color={awayColor} />
+        </div>
+      </div>
+
+      {fixture.question === "試合結果は？" ? null : (
+        <p className="fixture-question">{fixture.question}</p>
+      )}
+
+      <div className="pick-grid" data-count={market.outcomes.length}>
+        {market.outcomes.map((outcome, index) => (
+          <PickButton
+            key={outcome.id}
+            market={market}
+            outcome={outcome}
+            color={fixtureOutcomeColor(outcome.label, index, market.outcomes.length)}
+            selected={selectedOutcomeId === outcome.id}
+            disabled={locked}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+type ListMarketProps = {
+  market: Market;
+  locked: boolean;
+  selectedOutcomeId?: string;
+  onSelect: (prediction: SelectedPrediction) => void;
+};
+
+/** 優勝クラブ・得点王のように選択肢が並ぶ市場。 */
+function ListMarket({ market, locked, selectedOutcomeId, onSelect }: ListMarketProps) {
+  const [expanded, setExpanded] = useState(false);
+  const sorted = [...market.outcomes].sort((a, b) => b.probability - a.probability);
+  const hidden = Math.max(0, sorted.length - COLLAPSED_ROWS);
+  const visible = expanded ? sorted : sorted.slice(0, COLLAPSED_ROWS);
+
+  return (
+    <>
+      <h3>{market.title}</h3>
+
+      <div className="outcome-grid">
+        {visible.map((outcome, index) => (
+          <OutcomeRow
+            key={outcome.id}
+            market={market}
+            outcome={outcome}
+            color={clubColorForLabel(outcome.label) ?? rankColor(index, sorted.length)}
+            selected={selectedOutcomeId === outcome.id}
+            disabled={locked}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+
+      {hidden > 0 ? (
+        <button
+          className="more-button"
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setExpanded((current) => !current);
+          }}
+        >
+          {expanded ? "上位だけ表示 ▴" : `他 ${hidden} 件を見る ▾`}
+        </button>
+      ) : null}
+    </>
+  );
+}
+
+type PickProps = {
   market: Market;
   outcome: Outcome;
   color: string;
-  showRowBar: boolean;
-  lead: boolean;
   selected: boolean;
   disabled: boolean;
   onSelect: (prediction: SelectedPrediction) => void;
 };
 
-function OutcomeButton({
-  market,
-  outcome,
-  color,
-  showRowBar,
-  lead,
-  selected,
-  disabled,
-  onSelect,
-}: OutcomeButtonProps) {
+function PickButton({ market, outcome, color, selected, disabled, onSelect }: PickProps) {
   const odds = probabilityToOdds(outcome.probability);
 
   return (
     <button
-      className={`outcome-button ${lead ? "lead" : ""} ${selected ? "selected" : ""}`}
+      className={`pick-button ${selected ? "selected" : ""}`}
       style={{ "--outcome-color": color } as CSSProperties}
       type="button"
       disabled={disabled}
       onClick={(event) => {
         event.stopPropagation();
         if (disabled) return;
-        onSelect({
-          marketId: market.id,
-          marketTitle: market.title,
-          outcomeId: outcome.id,
-          outcomeLabel: outcome.label,
-          probability: outcome.probability,
-          odds,
-        });
+        onSelect(toPrediction(market, outcome, odds));
+      }}
+    >
+      <span className="pick-name">{outcome.label}</span>
+      <span className="pick-odds">
+        <strong>{formatOddsValue(odds)}</strong>
+        <small>倍</small>
+      </span>
+      <span className="pick-probability">{formatProbability(outcome.probability)}</span>
+      <span
+        className="pick-fill"
+        aria-hidden="true"
+        style={{ width: `${Math.max(2, Math.round(outcome.probability * 100))}%` }}
+      />
+    </button>
+  );
+}
+
+function OutcomeRow({ market, outcome, color, selected, disabled, onSelect }: PickProps) {
+  const odds = probabilityToOdds(outcome.probability);
+
+  return (
+    <button
+      className={`outcome-button ${selected ? "selected" : ""}`}
+      style={{ "--outcome-color": color } as CSSProperties}
+      type="button"
+      disabled={disabled}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (disabled) return;
+        onSelect(toPrediction(market, outcome, odds));
       }}
     >
       <span className="outcome-dot" aria-hidden="true" />
       <strong className="outcome-label">{outcome.label}</strong>
       <span className="outcome-probability">{formatProbability(outcome.probability)}</span>
-      <span className="outcome-odds" title={`100pt賭けて当たると${Math.round(odds * 100)}pt戻ります`}>
+      <span className="outcome-odds">
         <strong>{formatOddsValue(odds)}</strong>
         <small>倍</small>
       </span>
-      {showRowBar ? (
-        <span className="outcome-meter" aria-hidden="true">
-          <span style={{ width: `${Math.max(2, Math.round(outcome.probability * 100))}%` }} />
-        </span>
-      ) : null}
+      <span
+        className="outcome-fill"
+        aria-hidden="true"
+        style={{ width: `${Math.max(2, Math.round(outcome.probability * 100))}%` }}
+      />
     </button>
   );
 }
 
-// 本命を濃い緑、人気薄を淡い緑にして、色で順位が分かるようにする。
-function outcomeColor(index: number, count: number) {
-  const t = count <= 1 ? 0 : index / (count - 1);
-  const lightness = 30 + t * 46;
+function Crest({ code, color }: { code: string; color: string }) {
+  return (
+    <span className="crest" style={{ background: color }} aria-hidden="true">
+      {code}
+    </span>
+  );
+}
 
-  return `hsl(162 46% ${lightness}%)`;
+function toPrediction(market: Market, outcome: Outcome, odds: number): SelectedPrediction {
+  return {
+    marketId: market.id,
+    marketTitle: market.title,
+    outcomeId: outcome.id,
+    outcomeLabel: outcome.label,
+    probability: outcome.probability,
+    odds,
+    kickoffAt: market.startsAt,
+  };
+}
+
+/** "チェルシー vs マンチェスター・U: 試合結果は？" を対戦カードと問いに分ける。 */
+function parseFixture(title: string): Fixture | null {
+  const match = title.match(/^(.+?) vs (.+?): (.+)$/);
+  if (!match) return null;
+
+  return { home: match[1], away: match[2], question: match[3] };
+}
+
+/** コードは "CHE-MUN" の形。崩れていてもエンブレムが空にならないようにする。 */
+function splitCode(code: string): [string, string] {
+  const parts = code.split("-");
+
+  return [parts[0] ?? "", parts[1] ?? ""];
+}
+
+function fixtureOutcomeColor(label: string, index: number, count: number) {
+  const club = clubColorForLabel(label);
+  if (club) return club;
+
+  // Yes / No の市場は「起きる」側だけ色を付けて、起きない側は無彩色にする。
+  if (count === 2 && index === 0) return "#16a06b";
+
+  return neutralOutcomeColor;
+}
+
+// クラブ名が付かない選択肢（選手名など）は、人気順を緑の濃淡で表す。
+function rankColor(index: number, count: number) {
+  const t = count <= 1 ? 0 : index / (count - 1);
+
+  return `hsl(162 46% ${30 + t * 46}%)`;
+}
+
+/** サーバーとブラウザで表示がずれないよう、日本時間に固定する。 */
+const kickoffFormat = new Intl.DateTimeFormat("ja-JP", {
+  month: "numeric",
+  day: "numeric",
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: "Asia/Tokyo",
+});
+
+function formatKickoff(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+
+  return kickoffFormat.format(date);
 }
 
 function getLockState(lockAt: string | undefined, now: number | null) {

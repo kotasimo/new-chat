@@ -11,6 +11,8 @@ export const initialMarkets: Market[] = [
     note: "勝ち・引き分け・負け",
     volumeLabel: "試合マーケット",
     source: "manual",
+    startsAt: "2026-10-26T12:00:00.000Z",
+    lockAt: "2026-10-26T12:00:00.000Z",
     outcomes: [
       { id: "che", label: "チェルシー勝利", probability: 0.52, side: "yes" },
       { id: "che-mun-draw", label: "引き分け", probability: 0.25, side: "no" },
@@ -27,6 +29,8 @@ export const initialMarkets: Market[] = [
     note: "勝ち・引き分け・負け",
     volumeLabel: "試合マーケット",
     source: "manual",
+    startsAt: "2026-10-26T14:30:00.000Z",
+    lockAt: "2026-10-26T14:30:00.000Z",
     outcomes: [
       { id: "liv", label: "リヴァプール勝利", probability: 0.36, side: "yes" },
       { id: "liv-ars-draw", label: "引き分け", probability: 0.28, side: "no" },
@@ -43,6 +47,8 @@ export const initialMarkets: Market[] = [
     note: "試合関連",
     volumeLabel: "試合マーケット",
     source: "manual",
+    startsAt: "2026-10-26T16:00:00.000Z",
+    lockAt: "2026-10-26T16:00:00.000Z",
     outcomes: [
       { id: "tot-cry-yes", label: "Yes", probability: 0.58, side: "yes" },
       { id: "tot-cry-no", label: "No", probability: 0.42, side: "no" },

@@ -22,6 +22,8 @@ type PredictionPanelProps = {
   }) => void;
 };
 
+const stakePresets = [100, 500, 1000];
+
 export function PredictionPanel({
   balance,
   guestError,
@@ -124,14 +126,18 @@ export function PredictionPanel({
           </button>
         ) : null}
         <h2>予想チケット</h2>
-        <div className="selected-box">
+        <div className={`selected-box ${selectedPrediction ? "filled" : ""}`}>
           {selectedPrediction ? (
             <>
               <strong>{selectedPrediction.outcomeLabel}</strong>
               <span className="muted">
                 {selectedPrediction.marketTitle}
-                <br />
-                倍率 {formatOdds(selectedPrediction.odds)}
+                {selectedPrediction.kickoffAt ? (
+                  <>
+                    <br />
+                    {formatKickoff(selectedPrediction.kickoffAt)} キックオフ
+                  </>
+                ) : null}
               </span>
             </>
           ) : (
@@ -147,16 +153,26 @@ export function PredictionPanel({
         <label className="field-label" htmlFor="stake">
           使うポイント
         </label>
-        <div className="stake-row">
-          <input
-            className="stake-input"
-            id="stake"
-            min={10}
-            max={balance}
-            type="number"
-            value={stake}
-            onChange={(event) => setStake(Number(event.target.value))}
-          />
+        <input
+          className="stake-input"
+          id="stake"
+          min={10}
+          max={balance}
+          type="number"
+          value={stake}
+          onChange={(event) => setStake(Number(event.target.value))}
+        />
+        <div className="stake-chips">
+          {stakePresets.map((preset) => (
+            <button
+              className={`quick-button ${stake === preset ? "active" : ""}`}
+              key={preset}
+              type="button"
+              onClick={() => setStake(Math.min(preset, balance))}
+            >
+              {preset.toLocaleString("ja-JP")}
+            </button>
+          ))}
           <button className="quick-button" type="button" onClick={() => setStake(balance)}>
             最大
           </button>
@@ -181,7 +197,7 @@ export function PredictionPanel({
           type="button"
           onClick={submitPrediction}
         >
-          {submitting ? "保存中..." : "予想確定"}
+          {submitting ? "保存中..." : "この予想を確定する"}
         </button>
       </section>
 
@@ -211,6 +227,24 @@ export function PredictionPanel({
       <div className={`toast ${activeToast ? "show" : ""}`}>{activeToast}</div>
     </aside>
   );
+}
+
+/** マーケットカードと同じ見え方にするため、日本時間で揃える。 */
+const kickoffFormat = new Intl.DateTimeFormat("ja-JP", {
+  month: "numeric",
+  day: "numeric",
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: "Asia/Tokyo",
+});
+
+function formatKickoff(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+
+  return kickoffFormat.format(date);
 }
 
 function statusLabel(prediction: PredictionHistoryItem) {

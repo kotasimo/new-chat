@@ -38,6 +38,7 @@ export type SelectedPrediction = {
   outcomeLabel: string;
   probability: number;
   odds: number;
+  kickoffAt?: string;
 };
 
 export type UserProfile = {
