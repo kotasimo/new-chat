@@ -1,4 +1,5 @@
 import { clubToJapanese, normalizeClubName } from "@/lib/clubs";
+import type { LeagueId, LeagueInfo } from "@/lib/leagues";
 import { playerNameToJapanese } from "@/lib/player-names";
 import { formatUsdVolumeAsYen } from "@/lib/volume";
 
@@ -57,6 +58,7 @@ type AppMarketRecord = {
   market: {
     id: string;
     slug: string;
+    league: LeagueId;
     category: "match" | "winner" | "special";
     code: string;
     title: string;
@@ -85,17 +87,24 @@ type AppMarketRecord = {
   }>;
 };
 
+// リーグは取得元のタグで決まるので、1件ずつ組み立てる間は持たせない。
+type DraftMarketRecord = {
+  market: Omit<AppMarketRecord["market"], "league">;
+  outcomes: AppMarketRecord["outcomes"];
+};
+
 const GAMMA_BASE_URL = "https://gamma-api.polymarket.com";
-const EPL_TAG_ID = "306";
 // ほぼ取引されていない選択肢と、0.5のまま置かれている枠を落とすための下限。
 const MIN_OUTCOME_VOLUME_USD = 100;
 const UNTOUCHED_DEFAULT_VOLUME_USD = 2000;
 
-export async function fetchPolymarketPremierLeagueEvents(limit = 500) {
-  const events = await Promise.all([
-    fetchGammaEvents(EPL_TAG_ID, limit, false),
-    fetchGammaEvents(EPL_TAG_ID, limit, true),
-  ]);
+export async function fetchPolymarketLeagueEvents(league: LeagueInfo, limit = 400) {
+  const events = await Promise.all(
+    league.tagIds.flatMap((tagId) => [
+      fetchGammaEvents(tagId, limit, false),
+      fetchGammaEvents(tagId, limit, true),
+    ]),
+  );
 
   const bySlug = new Map<string, GammaEvent>();
   events.flat().forEach((event) => {
@@ -109,8 +118,8 @@ export async function fetchPolymarketPremierLeagueEvents(limit = 500) {
   );
 }
 
-export function buildAppMarketRecordsFromEvents(events: GammaEvent[]) {
-  const records: AppMarketRecord[] = [];
+export function buildAppMarketRecordsFromEvents(events: GammaEvent[], league: LeagueId) {
+  const records: DraftMarketRecord[] = [];
 
   for (const event of events) {
     if (isMainMatchEvent(event)) {
@@ -144,7 +153,11 @@ export function buildAppMarketRecordsFromEvents(events: GammaEvent[]) {
     }
   }
 
-  return records;
+  // リーグはイベントではなく取得元のタグで決まるので、組み立てのあとでまとめて付ける。
+  return records.map((record) => ({
+    ...record,
+    market: { ...record.market, league },
+  }));
 }
 
 // 勝敗・ハーフタイム・先制点は「イベント内の各マーケットが選択肢1つ」という同じ形をしている。
@@ -152,7 +165,7 @@ function toMatchMarketRecord(
   event: GammaEvent,
   kind: MatchMarketKind,
   sortOrder: number,
-): AppMarketRecord | null {
+): DraftMarketRecord | null {
   const teams = parseMatchTitle(event.title);
   if (!teams) return null;
 
@@ -227,14 +240,14 @@ function toSelectedMoreMarketRecords(event: GammaEvent, baseSortOrder: number) {
 
   return (event.markets ?? [])
     .map((market, index) => toMatchPropRecord(market, teams, baseSortOrder + index))
-    .filter((record): record is AppMarketRecord => record !== null);
+    .filter((record): record is DraftMarketRecord => record !== null);
 }
 
 function toMatchPropRecord(
   market: GammaMarket,
   teams: Teams,
   sortOrder: number,
-): AppMarketRecord | null {
+): DraftMarketRecord | null {
   const title = matchPropTitle(market.slug, teams);
   if (!title) return null;
 
@@ -279,7 +292,7 @@ function toMatchPropRecord(
   };
 }
 
-function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketRecord | null {
+function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): DraftMarketRecord | null {
   const config = futureEventConfig(event);
   if (!config) return null;
 
@@ -342,7 +355,7 @@ function toFutureGroupedRecord(event: GammaEvent, sortOrder: number): AppMarketR
 }
 
 // 「〜する？」をYes/Noひとつで聞くネタ寄りのイベント。選択肢が分かれていないので別扱いにする。
-function toBinaryEventRecord(event: GammaEvent, sortOrder: number): AppMarketRecord | null {
+function toBinaryEventRecord(event: GammaEvent, sortOrder: number): DraftMarketRecord | null {
   const config = binaryEvents[event.slug];
   const market = event.markets?.[0];
   if (!config || !market || isPlaceholderMarket(market)) return null;
@@ -441,130 +454,174 @@ function isMoreMarketsEvent(event: GammaEvent) {
   return /^.+ vs\. .+ - More Markets$/.test(event.title);
 }
 
-// シーズン通年のマーケットは取り込むものを絞る。優勝だけはslugに生成時刻が付くので正規表現で拾う。
+// シーズン通年のマーケットは、リーグをまたいでslugの形が揃っている。
+// 個別に列挙するとリーグとシーズンの数だけ増えるので、形で拾う。
 function futureEventConfig(event: GammaEvent): FutureEventConfig | null {
-  if (/^epl-\d{4}-champion/.test(event.slug)) {
-    return { title: "優勝クラブは？", category: "winner", code: "EPL" };
+  const slug = event.slug;
+
+  for (const rule of futureEventRules) {
+    const match = slug.match(rule.pattern);
+
+    if (match) {
+      return rule.config(match, event);
+    }
   }
 
-  return futureEvents[event.slug] ?? null;
+  return null;
 }
 
-const futureEvents: Record<string, FutureEventConfig> = {
-  "2027-soccer-premier-league-runner-up": {
-    title: "2位になるクラブは？",
-    category: "special",
-    code: "RU",
-  },
-  "premier-league-3rd-place-finish-2026-27": {
-    title: "3位になるクラブは？",
-    category: "special",
-    code: "P3",
-  },
-  "epl-2026-27-top-2-finishers": {
-    title: "トップ2に入るクラブは？",
-    category: "special",
-    code: "TOP2",
-  },
-  "premier-league-top-4-finishers-2026-27": {
-    title: "トップ4に入るクラブは？",
-    category: "special",
-    code: "TOP4",
-  },
-  "premier-league-top-5-finishers-2026-27": {
-    title: "トップ5に入るクラブは？",
-    category: "special",
-    code: "TOP5",
-  },
-  "premier-league-top-6-finishers-2026-27": {
-    title: "トップ6に入るクラブは？",
-    category: "special",
-    code: "TOP6",
-  },
-  "premier-league-top-10-finishers-2026-27": {
-    title: "トップ10に入るクラブは？",
-    category: "special",
-    code: "TOP10",
-  },
-  "premier-league-teams-relegated-2026-27": {
-    title: "降格するクラブは？",
-    category: "special",
-    code: "REL",
-  },
-  "premier-league-last-place-finisher-2026-27": {
-    title: "最下位になるクラブは？",
-    category: "special",
-    code: "LAST",
-  },
-  "premier-league-17th-place-relegation-survivor-2026-27": {
-    title: "17位（残留ライン）になるクラブは？",
-    category: "special",
-    code: "P17",
-  },
-  "efl-championship-team-promoted-to-epl-2026-27": {
-    title: "プレミアリーグに昇格するクラブは？",
-    category: "special",
-    code: "PRO",
-  },
-  "epl-team-to-qualify-for-the-2027-28-uefa-champions-league": {
-    title: "チャンピオンズリーグ出場権を取るクラブは？",
-    category: "special",
-    code: "UCL",
-  },
-  "epl-team-to-qualify-for-the-2027-28-uefa-europa-league": {
-    title: "ヨーロッパリーグ出場権を取るクラブは？",
-    category: "special",
-    code: "UEL",
-  },
-  "epl-team-to-qualify-for-the-2027-28-uefa-conference-league": {
-    title: "カンファレンスリーグ出場権を取るクラブは？",
-    category: "special",
-    code: "UECL",
-  },
-  "epl-2026-27-which-manager-gets-sacked-first": {
-    title: "最初にクビになる監督は？",
-    category: "special",
-    code: "SACK",
-  },
-  "michael-carrick-out-as-manchester-united-manager-by": {
-    title: "キャリックがマンチェスター・U監督を去るのはいつ？",
-    category: "special",
-    code: "CARRICK",
-    label: deadlineLabel,
-  },
-  "manchester-city-punishment-announced-by": {
-    title: "マンチェスター・Cへの処分が発表されるのはいつ？",
-    category: "special",
-    code: "MCWHEN",
-    label: deadlineLabel,
-  },
-  "how-many-premier-league-points-will-manchester-city-be-deducted": {
-    title: "マンチェスター・Cは勝点を何点剥奪される？",
-    category: "special",
-    code: "MCPOINTS",
-    label: pointsDeductionLabel,
-  },
-  "premier-league-top-goalscorer-2026-27": {
-    title: "得点王は？",
-    category: "special",
-    code: "GOAL",
-  },
-  "premier-league-most-assists-2026-27": {
-    title: "最多アシストは？",
-    category: "special",
-    code: "AST",
-  },
-  "premier-league-most-clean-sheets-2026-27": {
-    title: "最多クリーンシートのGKは？",
-    category: "special",
-    code: "CS",
-  },
-  "premier-league-team-most-clean-sheets-2026-27": {
-    title: "最多クリーンシートのクラブは？",
-    category: "special",
-    code: "TCS",
-  },
+type FutureEventRule = {
+  pattern: RegExp;
+  config: (match: RegExpMatchArray, event: GammaEvent) => FutureEventConfig;
 };
+
+const futureEventRules: FutureEventRule[] = [
+  {
+    pattern: /-\d{4}-champion(-\d+)?$/,
+    config: () => ({ title: "優勝クラブは？", category: "winner", code: "WIN" }),
+  },
+  {
+    pattern: /-runner-up$/,
+    config: () => ({ title: "2位になるクラブは？", category: "special", code: "RU" }),
+  },
+  {
+    pattern: /-3rd-place-finish-/,
+    config: () => ({ title: "3位になるクラブは？", category: "special", code: "P3" }),
+  },
+  {
+    pattern: /-top-(\d+)-finishers/,
+    config: (match) => ({
+      title: `トップ${match[1]}に入るクラブは？`,
+      category: "special",
+      code: `TOP${match[1]}`,
+    }),
+  },
+  {
+    pattern: /-teams-relegated-/,
+    config: () => ({ title: "降格するクラブは？", category: "special", code: "REL" }),
+  },
+  {
+    pattern: /-last-place-finisher-/,
+    config: () => ({ title: "最下位になるクラブは？", category: "special", code: "LAST" }),
+  },
+  {
+    pattern: /-(\d+)(?:st|nd|rd|th)-place-relegation-survivor-/,
+    config: (match) => ({
+      title: `${match[1]}位（残留ライン）になるクラブは？`,
+      category: "special",
+      code: `P${match[1]}`,
+    }),
+  },
+  {
+    pattern: /-team-promoted-to-/,
+    config: () => ({ title: "昇格してくるクラブは？", category: "special", code: "PRO" }),
+  },
+  {
+    pattern: /-uefa-champions-league$/,
+    config: () => ({
+      title: "チャンピオンズリーグ出場権を取るクラブは？",
+      category: "special",
+      code: "UCL",
+    }),
+  },
+  {
+    pattern: /-uefa-europa-league$/,
+    config: () => ({
+      title: "ヨーロッパリーグ出場権を取るクラブは？",
+      category: "special",
+      code: "UEL",
+    }),
+  },
+  {
+    pattern: /-uefa-conference-league$/,
+    config: () => ({
+      title: "カンファレンスリーグ出場権を取るクラブは？",
+      category: "special",
+      code: "UECL",
+    }),
+  },
+  {
+    pattern: /-top-goalscorer-\d{4}-\d{2}$/,
+    config: () => ({ title: "得点王は？", category: "special", code: "GOAL" }),
+  },
+  {
+    pattern: /-most-assists-/,
+    config: () => ({ title: "最多アシストは？", category: "special", code: "AST" }),
+  },
+  {
+    pattern: /-team-most-clean-sheets-/,
+    config: () => ({
+      title: "最多クリーンシートのクラブは？",
+      category: "special",
+      code: "TCS",
+    }),
+  },
+  {
+    pattern: /-most-clean-sheets-/,
+    config: () => ({ title: "最多クリーンシートのGKは？", category: "special", code: "CS" }),
+  },
+  {
+    pattern: /-which-manager-gets-sacked-first$/,
+    config: () => ({ title: "最初にクビになる監督は？", category: "special", code: "SACK" }),
+  },
+  {
+    pattern: /-out-as-.+-manager-by$/,
+    config: (_match, event) => ({
+      title: managerExitTitle(event.title),
+      category: "special",
+      code: "MGROUT",
+      label: deadlineLabel,
+    }),
+  },
+  {
+    pattern: /-(punishment|verdict)-announced-by$/,
+    config: (_match, event) => ({
+      title: verdictTitle(event.title),
+      category: "special",
+      code: "VERDICT",
+      label: deadlineLabel,
+    }),
+  },
+  {
+    pattern: /^how-many-.+-points-will-(.+)-be-deducted$/,
+    config: (match) => ({
+      title: `${toJa(slugToName(match[1]))}は勝点を何点剥奪される？`,
+      category: "special",
+      code: "DEDUCT",
+      label: pointsDeductionLabel,
+    }),
+  },
+];
+
+// "Michael Carrick out as Manchester United manager by...?"
+function managerExitTitle(title: string) {
+  const match = title.match(/^(.+) out as (.+) manager by/);
+
+  if (!match) {
+    return "監督が交代するのはいつ？";
+  }
+
+  return `${toJa(match[1])}が${toJa(match[2])}の監督を去るのはいつ？`;
+}
+
+// "Manchester City punishment announced by...?" / "Barcelona UEFA Negreira verdict announced by...?"
+function verdictTitle(title: string) {
+  const match = title.match(/^(.+?)(?: UEFA)?(?: Negreira)? (?:punishment|verdict) announced by/);
+
+  if (!match) {
+    return "処分が発表されるのはいつ？";
+  }
+
+  return `${toJa(match[1])}への処分が発表されるのはいつ？`;
+}
+
+// slugの "manchester-city" を "Manchester City" に戻して名前の対応表に渡す。
+function slugToName(slug: string) {
+  return slug
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 // Yes/Noひとつで完結するイベント。順位や記録と違って、結果以外の話題で遊べる枠。
 const binaryEvents: Record<string, { title: string; code: string }> = {
@@ -599,6 +656,10 @@ const binaryEvents: Record<string, { title: string; code: string }> = {
   "uefa-opens-man-city-investigation-by-may-30-2027": {
     title: "UEFAはマンチェスター・Cの調査を始める？",
     code: "MCPROBE",
+  },
+  "will-uefa-find-fc-barcelona-guilty-in-the-negreira-case-by-december-31-2027": {
+    title: "UEFAはバルセロナをネグレイラ事件で有罪とする？",
+    code: "BARNEG",
   },
 };
 
@@ -810,9 +871,9 @@ function toJa(value: string) {
   return playerNameToJapanese(trimmed);
 }
 
-// 対戦カードのslug (epl-che-mun-2026-10-31...) から検索しやすい短縮コードを作る。
+// 対戦カードのslug (epl-che-mun-2026-10-31..., jap-fag-fct-...) から検索しやすい短縮コードを作る。
 function matchCode(slug: string, teams: Teams) {
-  const match = slug.match(/^epl-([a-z]{3})-([a-z]{3})-/);
+  const match = slug.match(/^[a-z0-9]+-([a-z]{3})-([a-z]{3})-\d{4}-/);
 
   if (match) {
     return `${match[1].toUpperCase()}-${match[2].toUpperCase()}`;

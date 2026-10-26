@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { getClosedMarkets } from "@/lib/data";
+import { leagues, toLeagueId } from "@/lib/leagues";
 import { formatProbability } from "@/lib/odds";
 import { volumeLabelToUsdValue } from "@/lib/volume";
 import type { CSSProperties } from "react";
@@ -17,14 +18,16 @@ const sortOptions: Array<{ key: HistorySort; label: string }> = [
 type HistoryPageProps = {
   searchParams?: Promise<{
     sort?: string;
+    league?: string;
   }>;
 };
 
 export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   const params = await searchParams;
   const activeSort = toHistorySort(params?.sort);
+  const activeLeague = toLeagueId(params?.league);
   const markets = sortClosedMarkets(
-    (await getClosedMarkets(200)).filter((market) =>
+    (await getClosedMarkets(activeLeague, 200)).filter((market) =>
       hasRecordedProbabilities(market),
     ),
     activeSort,
@@ -46,7 +49,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                   className={`history-sort-button ${
                     activeSort === option.key ? "active" : ""
                   }`}
-                  href={`/history?sort=${option.key}`}
+                  href={`/history?league=${activeLeague}&sort=${option.key}`}
                   key={option.key}
                 >
                   {option.label}
@@ -54,6 +57,18 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
               ))}
             </nav>
           </header>
+
+          <nav className="tabs league-tabs" aria-label="リーグ">
+            {leagues.map((league) => (
+              <a
+                className={`tab-button ${activeLeague === league.id ? "active" : ""}`}
+                href={`/history?league=${league.id}&sort=${activeSort}`}
+                key={league.id}
+              >
+                {league.label}
+              </a>
+            ))}
+          </nav>
 
           <div className="closed-market-list">
             {markets.length ? (

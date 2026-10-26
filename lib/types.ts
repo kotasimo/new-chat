@@ -1,3 +1,5 @@
+import type { LeagueId } from "@/lib/leagues";
+
 export type MarketCategory = "match" | "winner" | "special";
 
 export type Outcome = {
@@ -12,6 +14,7 @@ export type Outcome = {
 export type Market = {
   id: string;
   slug: string;
+  league: LeagueId;
   category: MarketCategory;
   code: string;
   title: string;

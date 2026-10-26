@@ -1788,3 +1788,15 @@ button {
     margin-top: 4px;
   }
 }
+
+.league-tabs {
+  margin: 18px 0 0;
+}
+
+.league-tabs .tab-button {
+  font-weight: 600;
+}
+
+.league-tabs + .tabs {
+  margin-top: 10px;
+}

@@ -4,6 +4,7 @@ export const initialMarkets: Market[] = [
   {
     id: "match-che-mun",
     slug: "chelsea-manchester-united-result",
+    league: "epl",
     category: "match",
     code: "CHE-MUN",
     title: "チェルシー vs マンチェスター・U: 試合結果は？",
@@ -19,6 +20,7 @@ export const initialMarkets: Market[] = [
   {
     id: "match-liv-ars",
     slug: "liverpool-arsenal-result",
+    league: "epl",
     category: "match",
     code: "LIV-ARS",
     title: "リヴァプール vs アーセナル: 試合結果は？",
@@ -34,6 +36,7 @@ export const initialMarkets: Market[] = [
   {
     id: "match-tot-cry",
     slug: "tottenham-crystal-palace-btts",
+    league: "epl",
     category: "match",
     code: "TOT-CRY",
     title: "トッテナム vs クリスタル・パレス: 両チーム得点する？",
@@ -48,6 +51,7 @@ export const initialMarkets: Market[] = [
   {
     id: "winner-epl",
     slug: "epl-champion",
+    league: "epl",
     category: "winner",
     code: "EPL",
     title: "優勝クラブは？",
@@ -65,6 +69,7 @@ export const initialMarkets: Market[] = [
   {
     id: "special-relegation",
     slug: "epl-teams-relegated",
+    league: "epl",
     category: "special",
     code: "REL",
     title: "降格するクラブは？",
@@ -81,6 +86,7 @@ export const initialMarkets: Market[] = [
   {
     id: "special-top-scorer",
     slug: "epl-top-goalscorer",
+    league: "epl",
     category: "special",
     code: "GOAL",
     title: "得点王は？",
@@ -97,6 +103,7 @@ export const initialMarkets: Market[] = [
   {
     id: "special-ucl-spot",
     slug: "epl-ucl-qualification",
+    league: "epl",
     category: "special",
     code: "UCL",
     title: "チャンピオンズリーグ出場権を取るクラブは？",

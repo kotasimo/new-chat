@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MarketCard } from "@/components/market-card";
 import { PredictionPanel } from "@/components/prediction-panel";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
+import { leagues, type LeagueId } from "@/lib/leagues";
 import type {
   Market,
   MarketCategory,
@@ -22,6 +23,7 @@ const tabs: Array<{ key: "all" | MarketCategory; label: string }> = [
 ];
 
 type MarketBoardProps = {
+  activeLeague: LeagueId;
   markets: Market[];
   initialBalance: number;
   initialPredictionHistory: PredictionHistoryItem[];
@@ -34,6 +36,7 @@ type PeriodicBonusState = {
 };
 
 export function MarketBoard({
+  activeLeague,
   markets,
   initialBalance,
   initialPredictionHistory,
@@ -278,6 +281,18 @@ export function MarketBoard({
             </button>
           </section>
         ) : null}
+
+        <nav className="tabs league-tabs" aria-label="リーグ">
+          {leagues.map((league) => (
+            <Link
+              className={`tab-button ${activeLeague === league.id ? "active" : ""}`}
+              href={`/?league=${league.id}`}
+              key={league.id}
+            >
+              {league.label}
+            </Link>
+          ))}
+        </nav>
 
         <div className="tabs" role="tablist" aria-label="マーケット種別">
           {tabs.map((tab) => (

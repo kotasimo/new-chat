@@ -1,3 +1,4 @@
+import type { LeagueId } from "@/lib/leagues";
 import { initialMarkets } from "@/lib/mock-markets";
 import { getOrCreateProfileForUser } from "@/lib/auth-profile";
 import { createServerSupabaseClient, hasSupabaseConfig } from "@/lib/supabase";
@@ -12,11 +13,12 @@ import { localizeVolumeLabel } from "@/lib/volume";
 
 const DEMO_EMAIL = "demo@yosoku-cup.local";
 const MARKET_SELECT =
-  "id, slug, category, code, title, note, volume_label, source, polymarket_slug, closed, closed_at, starts_at, lock_at, synced_at, winning_outcome_id, outcomes!outcomes_market_id_fkey(id, label, probability, side, final_price, winning)";
+  "id, slug, league, category, code, title, note, volume_label, source, polymarket_slug, closed, closed_at, starts_at, lock_at, synced_at, winning_outcome_id, outcomes!outcomes_market_id_fkey(id, label, probability, side, final_price, winning)";
 
 type MarketRecord = {
   id: string;
   slug: string;
+  league: string;
   category: string;
   code: string;
   title: string;
@@ -40,7 +42,7 @@ type MarketRecord = {
   }>;
 };
 
-export async function getHomeMarkets(): Promise<Market[]> {
+export async function getHomeMarkets(league: LeagueId): Promise<Market[]> {
   try {
     if (!hasSupabaseConfig()) {
       return initialMarkets;
@@ -50,6 +52,7 @@ export async function getHomeMarkets(): Promise<Market[]> {
     const { data, error } = await supabase
       .from("markets")
       .select(MARKET_SELECT)
+      .eq("league", league)
       .eq("active", true)
       .eq("closed", false)
       .order("sort_order", { ascending: true })
@@ -68,6 +71,7 @@ export async function getHomeMarkets(): Promise<Market[]> {
     return records.map((market) => ({
       id: market.id,
       slug: market.slug,
+      league: market.league as LeagueId,
       category: market.category as MarketCategory,
       code: market.code,
       title: market.title,
@@ -95,7 +99,7 @@ export async function getHomeMarkets(): Promise<Market[]> {
   }
 }
 
-export async function getClosedMarkets(limit = 80): Promise<Market[]> {
+export async function getClosedMarkets(league: LeagueId, limit = 80): Promise<Market[]> {
   try {
     if (!hasSupabaseConfig()) {
       return [];
@@ -105,6 +109,7 @@ export async function getClosedMarkets(limit = 80): Promise<Market[]> {
     const { data, error } = await supabase
       .from("markets")
       .select(MARKET_SELECT)
+      .eq("league", league)
       .eq("active", true)
       .eq("closed", true)
       .order("closed_at", { ascending: false, nullsFirst: false })
@@ -118,6 +123,7 @@ export async function getClosedMarkets(limit = 80): Promise<Market[]> {
     return ((data ?? []) as MarketRecord[]).map((market) => ({
       id: market.id,
       slug: market.slug,
+      league: market.league as LeagueId,
       category: market.category as MarketCategory,
       code: market.code,
       title: market.title,

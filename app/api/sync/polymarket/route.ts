@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
+import { isLeagueId, leagues } from "@/lib/leagues";
 import {
   buildAppMarketRecordsFromEvents,
-  fetchPolymarketPremierLeagueEvents,
+  fetchPolymarketLeagueEvents,
 } from "@/lib/polymarket";
 import { createServerSupabaseClient, hasSupabaseConfig } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
+// 5リーグ分を1回で取り込むので、既定の実行時間では足りない。
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   return syncPolymarket(request, "cron");
@@ -37,9 +40,17 @@ async function syncPolymarket(request: Request, mode: "cron" | "manual") {
 
   try {
     const supabase = createServerSupabaseClient({ admin: true });
-    const gammaEvents = await fetchPolymarketPremierLeagueEvents(500);
+    const requestedLeague = new URL(request.url).searchParams.get("league");
+    const targetLeagues = isLeagueId(requestedLeague)
+      ? leagues.filter((league) => league.id === requestedLeague)
+      : leagues;
     const syncedAt = new Date().toISOString();
-    const apiRecords = buildAppMarketRecordsFromEvents(gammaEvents);
+    const apiRecords = [];
+
+    for (const league of targetLeagues) {
+      const gammaEvents = await fetchPolymarketLeagueEvents(league);
+      apiRecords.push(...buildAppMarketRecordsFromEvents(gammaEvents, league.id));
+    }
 
   const records = apiRecords.map((record) => ({
     market: { ...record.market, synced_at: syncedAt },
@@ -49,6 +60,7 @@ async function syncPolymarket(request: Request, mode: "cron" | "manual") {
     supabase,
     records.flatMap((record) => record.outcomes.map((outcome) => outcome.id)),
   );
+  const syncedLeagues = targetLeagues.map((league) => league.id);
   const syncedAtMs = new Date(syncedAt).getTime();
   const recordsForUpsert = records.map((record) => {
     const lockAtMs = record.market.lock_at
@@ -112,6 +124,7 @@ async function syncPolymarket(request: Request, mode: "cron" | "manual") {
       ok: true,
       imported: records.length,
       apiMarkets: apiRecords.length,
+      leagues: syncedLeagues,
       manualMarkets: 0,
       settledPredictions: settlement.settled,
       paidOutPoints: settlement.paidOutPoints,
@@ -134,8 +147,8 @@ async function getExistingOutcomeProbabilities(
 ) {
   const probabilities = new Map<string, number>();
 
-  for (let index = 0; index < outcomeIds.length; index += 20) {
-    const chunk = outcomeIds.slice(index, index + 20);
+  for (let index = 0; index < outcomeIds.length; index += 200) {
+    const chunk = outcomeIds.slice(index, index + 200);
     if (!chunk.length) continue;
 
     const { data, error } = await supabase
@@ -186,8 +199,8 @@ async function settleResolvedPredictions(
   const predictions = [];
   const marketIds = Array.from(winningOutcomeByMarketId.keys());
 
-  for (let index = 0; index < marketIds.length; index += 20) {
-    const chunk = marketIds.slice(index, index + 20);
+  for (let index = 0; index < marketIds.length; index += 200) {
+    const chunk = marketIds.slice(index, index + 200);
     const { data, error } = await supabase
       .from("predictions")
       .select("id, profile_id, market_id, outcome_id, stake, odds")
