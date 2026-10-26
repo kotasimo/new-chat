@@ -35,10 +35,22 @@ NEXT_PUBLIC_CONTACT_EMAIL=""
 開発サーバーを起動した状態で、別ターミナルから実行します。
 
 ```bash
-npm run sync:polymarket
+APP_URL="http://127.0.0.1:3000" npm run sync:polymarket
 ```
 
-内部では `POST /api/sync/polymarket` が呼ばれ、Polymarketのプレミアリーグ関連市場をSupabaseへ保存します。
+内部では `POST /api/sync/polymarket` が呼ばれ、Polymarketの各リーグの市場をSupabaseへ保存します。
+対象はプレミアリーグ、ラ・リーガ、ブンデスリーガ、セリエA、J1リーグで、`lib/leagues.ts` に定義しています。
+
+`APP_URL` を省くと `.env` の値、つまり本番が同期先になります。
+5リーグ分の取り込みは1分前後かかり、Vercelの実行時間の上限に当たることがあるので、
+手で流すときはローカルの開発サーバー経由が確実です。Supabaseは同じものを見ているため、
+ローカルから流しても本番のデータが更新されます。
+
+リーグを1つだけ流すこともできます。
+
+```bash
+curl -X POST -H "authorization: Bearer $SYNC_SECRET" "http://127.0.0.1:3000/api/sync/polymarket?league=j1"
+```
 
 ## GitHub Actions で定期同期
 

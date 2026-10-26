@@ -150,8 +150,8 @@ async function getExistingOutcomeProbabilities(
 ) {
   const probabilities = new Map<string, number>();
 
-  for (let index = 0; index < outcomeIds.length; index += 200) {
-    const chunk = outcomeIds.slice(index, index + 200);
+  for (let index = 0; index < outcomeIds.length; index += 50) {
+    const chunk = outcomeIds.slice(index, index + 50);
     if (!chunk.length) continue;
 
     const { data, error } = await supabase
@@ -202,8 +202,8 @@ async function settleResolvedPredictions(
   const predictions = [];
   const marketIds = Array.from(winningOutcomeByMarketId.keys());
 
-  for (let index = 0; index < marketIds.length; index += 200) {
-    const chunk = marketIds.slice(index, index + 200);
+  for (let index = 0; index < marketIds.length; index += 50) {
+    const chunk = marketIds.slice(index, index + 50);
     const { data, error } = await supabase
       .from("predictions")
       .select("id, profile_id, market_id, outcome_id, stake, odds")
