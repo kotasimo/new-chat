@@ -865,94 +865,117 @@ button {
 }
 
 .outcome-grid {
-  display: grid;
-  gap: 0;
-  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.market-stack {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.market-stack span {
+  height: 100%;
 }
 
 .outcome-button {
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
-  color: var(--ink);
-  padding: 12px 14px 12px 0;
-  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 14px;
+  grid-template-columns: 11px minmax(0, 1fr) auto auto;
   align-items: center;
+  gap: 9px 12px;
+  width: 100%;
   text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--ink);
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
-.outcome-button.secondary {
-  color: var(--ink);
+.outcome-button:hover:not(:disabled) {
+  border-color: #15805a;
+  background: #f3faf7;
 }
 
-.outcome-button.binary {
-  color: var(--ink);
+.outcome-button:focus-visible {
+  outline: 2px solid #15805a;
+  outline-offset: 2px;
 }
 
-.outcome-button.binary.secondary {
-  color: var(--ink);
+.outcome-button.lead {
+  padding: 13px 14px;
 }
 
 .outcome-button.selected {
-  color: #0068ff;
-  background: #d9ecff;
-  box-shadow: inset 4px 0 0 #0068ff;
-  padding-left: 12px;
-  padding-right: 14px;
+  border-color: #15805a;
+  background: var(--green-soft);
+  box-shadow: inset 0 0 0 1px #15805a;
 }
 
 .outcome-button:disabled {
   cursor: not-allowed;
-  opacity: 0.68;
+  opacity: 0.66;
 }
 
-.outcome-button:disabled .outcome-meter span {
-  background: #6f7972;
+.outcome-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--outcome-color);
 }
 
-.outcome-button strong {
-  font-size: 16px;
-  margin-bottom: 0;
+.outcome-label {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.outcome-button.lead .outcome-label {
+  font-size: 17px;
 }
 
 .outcome-probability {
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 900;
   line-height: 1;
-  color: #15805a;
+  text-align: right;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.outcome-button.lead .outcome-probability {
+  font-size: 24px;
 }
 
 .outcome-odds {
-  min-width: 82px;
-  text-align: right;
-  font-size: 18px;
-  font-weight: 900;
-  color: #b42318;
-  opacity: 1;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  background: #f1f4f0;
+  border-radius: 6px;
+  padding: 4px 8px;
+  white-space: nowrap;
 }
 
 .outcome-meter {
   grid-column: 1 / -1;
-  height: 6px;
+  height: 5px;
   border-radius: 999px;
-  background: #e6ebe4;
+  background: #eef2ec;
   overflow: hidden;
 }
 
 .outcome-meter span {
   display: block;
-  width: var(--outcome-strength);
   height: 100%;
   border-radius: inherit;
-  background: #15805a;
-}
-
-.outcome-button.selected .outcome-meter span {
-  background: #15805a;
+  background: var(--outcome-color);
 }
 
 .side-panel {

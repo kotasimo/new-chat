@@ -10,15 +10,24 @@ type MarketCardProps = {
 };
 
 export function MarketCard({ market, now, selectedOutcomeId, onSelect }: MarketCardProps) {
-  const isYesNoMarket = market.outcomes.every((outcome) =>
-    ["YES", "NO"].includes(outcome.label),
-  );
   const isSelectedMarket = market.outcomes.some((outcome) => outcome.id === selectedOutcomeId);
   const sortedOutcomes = [...market.outcomes].sort(
     (a, b) => b.probability - a.probability,
   );
   const lockState = getLockState(market.lockAt, now);
   const isSelectable = !lockState.locked;
+
+  // 選択肢が排他で合計が100%前後なら1本の積み上げバーにできる。
+  // 「降格するクラブ」のように複数当たる市場は合計が1を大きく超えるので、行ごとのバーにする。
+  const total = sortedOutcomes.reduce((sum, outcome) => sum + outcome.probability, 0);
+  const isShare = total > 0 && total <= 1.2;
+
+  const rows = sortedOutcomes.map((outcome, index) => ({
+    outcome,
+    color: outcomeColor(index, sortedOutcomes.length),
+    share: total > 0 ? (outcome.probability / total) * 100 : 0,
+    lead: isShare && index === 0,
+  }));
 
   return (
     <article
@@ -45,15 +54,27 @@ export function MarketCard({ market, now, selectedOutcomeId, onSelect }: MarketC
         ) : null}
       </div>
 
+      {isShare ? (
+        <div className="market-stack" aria-hidden="true">
+          {rows.map((row) => (
+            <span
+              key={row.outcome.id}
+              style={{ width: `${row.share}%`, background: row.color }}
+            />
+          ))}
+        </div>
+      ) : null}
+
       <div className="outcome-grid">
-        {sortedOutcomes.map((outcome) => (
+        {rows.map((row) => (
           <OutcomeButton
-            key={outcome.id}
+            key={row.outcome.id}
             market={market}
-            outcome={outcome}
-            binary={isYesNoMarket}
-            selected={selectedOutcomeId === outcome.id}
-            secondary={isYesNoMarket && outcome.label === "NO"}
+            outcome={row.outcome}
+            color={row.color}
+            showRowBar={!isShare}
+            lead={row.lead}
+            selected={selectedOutcomeId === row.outcome.id}
             disabled={lockState.locked}
             onSelect={onSelect}
           />
@@ -66,9 +87,10 @@ export function MarketCard({ market, now, selectedOutcomeId, onSelect }: MarketC
 type OutcomeButtonProps = {
   market: Market;
   outcome: Outcome;
-  binary: boolean;
+  color: string;
+  showRowBar: boolean;
+  lead: boolean;
   selected: boolean;
-  secondary: boolean;
   disabled: boolean;
   onSelect: (prediction: SelectedPrediction) => void;
 };
@@ -76,9 +98,10 @@ type OutcomeButtonProps = {
 function OutcomeButton({
   market,
   outcome,
-  binary,
+  color,
+  showRowBar,
+  lead,
   selected,
-  secondary,
   disabled,
   onSelect,
 }: OutcomeButtonProps) {
@@ -86,17 +109,8 @@ function OutcomeButton({
 
   return (
     <button
-      className={`outcome-button ${binary ? "binary" : ""} ${
-        secondary ? "secondary" : ""
-      } ${selected ? "selected" : ""}`}
-      style={
-        {
-          "--outcome-strength": `${Math.max(
-            2,
-            Math.round(outcome.probability * 100),
-          )}%`,
-        } as CSSProperties
-      }
+      className={`outcome-button ${lead ? "lead" : ""} ${selected ? "selected" : ""}`}
+      style={{ "--outcome-color": color } as CSSProperties}
       type="button"
       disabled={disabled}
       onClick={(event) => {
@@ -112,16 +126,25 @@ function OutcomeButton({
         });
       }}
     >
-      <strong>{outcome.label}</strong>
-      <span className="outcome-probability">
-        {formatProbability(outcome.probability)}
-      </span>
+      <span className="outcome-dot" aria-hidden="true" />
+      <strong className="outcome-label">{outcome.label}</strong>
+      <span className="outcome-probability">{formatProbability(outcome.probability)}</span>
       <span className="outcome-odds">{formatOdds(odds)}</span>
-      <span className="outcome-meter" aria-hidden="true">
-        <span />
-      </span>
+      {showRowBar ? (
+        <span className="outcome-meter" aria-hidden="true">
+          <span style={{ width: `${Math.max(2, Math.round(outcome.probability * 100))}%` }} />
+        </span>
+      ) : null}
     </button>
   );
+}
+
+// 本命を濃い緑、人気薄を淡い緑にして、色で順位が分かるようにする。
+function outcomeColor(index: number, count: number) {
+  const t = count <= 1 ? 0 : index / (count - 1);
+  const lightness = 30 + t * 46;
+
+  return `hsl(162 46% ${lightness}%)`;
 }
 
 function getLockState(lockAt: string | undefined, now: number | null) {
