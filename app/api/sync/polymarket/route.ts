@@ -103,15 +103,10 @@ async function syncPolymarket(request: Request, mode: "cron" | "manual") {
       winning_outcome_id: record.market.winning_outcome_id,
     }));
 
-  for (const resolvedMarket of resolvedMarketRows) {
-    const { error: resultError } = await supabase
-      .from("markets")
-      .update({ winning_outcome_id: resolvedMarket.winning_outcome_id })
-      .eq("id", resolvedMarket.id);
+  const resultError = await updateWinningOutcomes(supabase, resolvedMarketRows);
 
-    if (resultError) {
-      return NextResponse.json({ error: resultError.message }, { status: 500 });
-    }
+  if (resultError) {
+    return NextResponse.json({ error: resultError }, { status: 500 });
   }
 
   const settlement = await settleResolvedPredictions(
@@ -150,10 +145,7 @@ async function getExistingOutcomeProbabilities(
 ) {
   const probabilities = new Map<string, number>();
 
-  for (let index = 0; index < outcomeIds.length; index += 50) {
-    const chunk = outcomeIds.slice(index, index + 50);
-    if (!chunk.length) continue;
-
+  await inParallelChunks(outcomeIds, 50, async (chunk) => {
     const { data, error } = await supabase
       .from("outcomes")
       .select("id, probability")
@@ -166,9 +158,30 @@ async function getExistingOutcomeProbabilities(
     for (const outcome of data ?? []) {
       probabilities.set(outcome.id, outcome.probability);
     }
-  }
+  });
 
   return probabilities;
+}
+
+// Vercelの関数からSupabaseへの往復は1回あたりが遅く、順番に投げると
+// リーグが増えた分だけ実行時間の上限に近づく。順番に意味はないので何本かまとめて流す。
+const CHUNK_CONCURRENCY = 6;
+
+async function inParallelChunks<T>(
+  items: T[],
+  size: number,
+  run: (chunk: T[]) => Promise<void>,
+) {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    const chunk = items.slice(index, index + size);
+    if (chunk.length) chunks.push(chunk);
+  }
+
+  for (let index = 0; index < chunks.length; index += CHUNK_CONCURRENCY) {
+    await Promise.all(chunks.slice(index, index + CHUNK_CONCURRENCY).map(run));
+  }
 }
 
 async function upsertInChunks(
@@ -177,10 +190,7 @@ async function upsertInChunks(
   rows: Array<Record<string, unknown>>,
   size: number,
 ) {
-  for (let index = 0; index < rows.length; index += size) {
-    const chunk = rows.slice(index, index + size);
-    if (!chunk.length) continue;
-
+  await inParallelChunks(rows, size, async (chunk) => {
     const { error } = await supabase
       .from(table)
       .upsert(chunk, { onConflict: "id" });
@@ -188,7 +198,25 @@ async function upsertInChunks(
     if (error) {
       throw new Error(`upsert ${table}: ${error.message}`);
     }
-  }
+  });
+}
+
+async function updateWinningOutcomes(
+  supabase: ReturnType<typeof createServerSupabaseClient>,
+  rows: Array<{ id: string; winning_outcome_id: string | null }>,
+) {
+  let failure: string | null = null;
+
+  await inParallelChunks(rows, 1, async ([row]) => {
+    const { error } = await supabase
+      .from("markets")
+      .update({ winning_outcome_id: row.winning_outcome_id })
+      .eq("id", row.id);
+
+    if (error) failure ??= error.message;
+  });
+
+  return failure;
 }
 
 async function settleResolvedPredictions(
@@ -199,11 +227,17 @@ async function settleResolvedPredictions(
     return { settled: 0, paidOutPoints: 0 };
   }
 
-  const predictions = [];
+  const predictions: Array<{
+    id: string;
+    profile_id: string;
+    market_id: string;
+    outcome_id: string;
+    stake: number;
+    odds: number;
+  }> = [];
   const marketIds = Array.from(winningOutcomeByMarketId.keys());
 
-  for (let index = 0; index < marketIds.length; index += 50) {
-    const chunk = marketIds.slice(index, index + 50);
+  await inParallelChunks(marketIds, 50, async (chunk) => {
     const { data, error } = await supabase
       .from("predictions")
       .select("id, profile_id, market_id, outcome_id, stake, odds")
@@ -215,7 +249,7 @@ async function settleResolvedPredictions(
     }
 
     predictions.push(...(data ?? []));
-  }
+  });
 
   let settled = 0;
   let paidOutPoints = 0;
