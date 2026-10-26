@@ -7,3 +7,4 @@ data/yosoku.db
 data
 outputs/*.log
 .claude
+*.tsbuildinfo
