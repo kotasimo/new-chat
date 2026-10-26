@@ -94,7 +94,7 @@ export function TransactionsBoard() {
         <section className="asset-card">
           <span>保有ポイント</span>
           <strong className={loading ? "loading-value" : ""}>
-            {loading ? "確認中" : profile ? `${profile.points.toLocaleString("ja-JP")}pt` : "-"}
+            {loading ? "—" : profile ? `${profile.points.toLocaleString("ja-JP")}pt` : "-"}
           </strong>
           {!loading && profile?.displayName ? <small>表示名: {profile.displayName}</small> : null}
           {loading ? <small>ゲスト情報を確認しています。</small> : null}

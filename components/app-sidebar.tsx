@@ -119,7 +119,7 @@ export function AppSidebar() {
         <div className="brand-mark">Y</div>
       </Link>
       <div className="sidebar-balance" aria-label="保有ポイント">
-        {points === null ? "確認中" : `${points.toLocaleString("ja-JP")}pt`}
+        {points === null ? "—" : `${points.toLocaleString("ja-JP")}pt`}
       </div>
       {pathname === "/" ? (
         <button

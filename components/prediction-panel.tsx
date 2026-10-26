@@ -106,7 +106,7 @@ export function PredictionPanel({
       <section className="asset-card">
         <span>保有ポイント</span>
         <strong className={guestLoading ? "loading-value" : ""}>
-          {guestLoading ? "確認中" : `${balance.toLocaleString("ja-JP")}pt`}
+          {guestLoading ? "—" : `${balance.toLocaleString("ja-JP")}pt`}
         </strong>
         {guestLoading ? <small>ゲスト情報を確認しています。</small> : null}
         {!guestLoading && guestError ? <small>{guestError}</small> : null}
@@ -138,7 +138,7 @@ export function PredictionPanel({
             <>
               <strong>マーケットを選択</strong>
               <span className="muted">
-                右のボタンから予想を選ぶと、ここで受け取りポイントを確認できます。
+                左のマーケットから予想を選ぶと、ここで受け取りポイントを確認できます。
               </span>
             </>
           )}
@@ -170,7 +170,7 @@ export function PredictionPanel({
             </strong>
           </div>
           <div>
-            <span aria-hidden="true">&nbsp;</span>
+            <span>的中なら</span>
             <strong>{selectedPrediction ? formatPoints(payout) : "-"}</strong>
           </div>
         </div>
