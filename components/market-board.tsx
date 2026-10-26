@@ -244,24 +244,17 @@ export function MarketBoard({
         </div>
 
         <section className="hero">
-          <div>
-            <h1>世界の予測オッズで、無料で遊ぶ。</h1>
-            <p>
-              Polymarketの予測価格を参考にした、ポイント制の予想ゲーム。
-              現金・暗号資産・換金はありません。
-            </p>
-            <p className="hero-source">
-              Polymarketは世界の出来事を取引できる予測市場です。
-              <a href="https://polymarket.com" target="_blank" rel="noreferrer">
-                polymarket.com
-              </a>
-            </p>
-          </div>
-          <div className="hero-actions">
-            <Link className="hero-guide-link" href="/guide">
-              遊び方を見る
-            </Link>
-          </div>
+          <p>
+            <strong>無料ポイントの予想ゲーム。</strong>
+            現金・暗号資産・換金はありません。倍率は
+            <a href="https://polymarket.com" target="_blank" rel="noreferrer">
+              polymarket.com
+            </a>
+            の予測価格から自動換算しています。
+          </p>
+          <Link className="hero-guide-link" href="/guide">
+            遊び方 →
+          </Link>
         </section>
 
         {periodicBonus?.available ? (

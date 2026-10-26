@@ -272,84 +272,52 @@ button {
 }
 
 .hero {
-  min-height: 216px;
-  border-radius: 8px;
-  overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(9, 16, 13, 0.82), rgba(9, 16, 13, 0.34)),
-    url("https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1800&q=80");
-  background-size: cover;
-  background-position: center;
-  color: white;
   display: flex;
-  align-items: end;
-  padding: 26px;
-  margin-bottom: 18px;
-  box-shadow: var(--shadow);
-  position: relative;
-}
-
-.hero h1 {
-  margin: 0 0 8px;
-  font-size: clamp(30px, 4vw, 50px);
-  line-height: 1.03;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px 14px;
+  margin-bottom: 14px;
 }
 
 .hero p {
   margin: 0;
-  max-width: 680px;
-  color: rgba(255, 255, 255, 0.84);
-  font-size: 15px;
-  line-height: 1.7;
-}
-
-.hero-source {
-  margin-top: 8px;
-  max-width: 760px;
+  color: var(--muted);
   font-size: 13px;
+  line-height: 1.5;
 }
 
-.hero-source a {
-  color: white;
-  font-weight: 900;
-  margin-left: 8px;
+.hero p strong {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.hero a {
+  color: var(--ink);
+  font-weight: 800;
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 2px;
 }
 
-.hero-actions {
-  align-items: center;
-  bottom: 24px;
-  display: flex;
-  gap: 8px;
-  position: absolute;
-  right: 24px;
-}
-
-.hero-actions a,
-.hero-actions button {
-  align-items: center;
-  background: #ffd24a;
-  border: 1px solid rgba(255, 255, 255, 0.32);
+.hero-guide-link {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
-  color: #151511;
-  display: flex;
-  font-size: 14px;
-  font-weight: 900;
-  min-height: 40px;
-  padding: 0 16px;
+  padding: 6px 13px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
   text-decoration: none;
   white-space: nowrap;
 }
 
-.hero-actions button {
-  cursor: pointer;
-}
-
-.hero-actions a:hover,
-.hero-actions button:hover {
-  background: #ffe07a;
+.hero-guide-link:hover {
+  border-color: #15805a;
+  background: var(--green-soft);
+  color: #0f6b4a;
 }
 
 .bonus-card {
@@ -1892,21 +1860,13 @@ button {
   }
 
   .hero {
-    min-height: 260px;
-    padding: 20px;
-    align-items: end;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
   }
 
-  .hero-actions {
-    bottom: 16px;
-    right: 16px;
-  }
-
-  .hero-actions a,
-  .hero-actions button {
-    font-size: 13px;
-    min-height: 36px;
-    padding: 0 13px;
+  .hero-guide-link {
+    margin-left: 0;
   }
 
   .bonus-card {
