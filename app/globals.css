@@ -1731,7 +1731,8 @@ button.fixture:focus-visible .fixture-more {
   background: #fbfcf9;
 }
 
-.ranking-avatar {
+/* .ranking-entry span より詳細度を上げないと display: block に負ける。 */
+.ranking-entry .ranking-avatar {
   display: grid;
   place-items: center;
   width: 34px;
