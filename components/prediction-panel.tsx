@@ -23,8 +23,6 @@ type PredictionPanelProps = {
   }) => void;
 };
 
-const stakePresets = [100, 500, 1000];
-
 export function PredictionPanel({
   balance,
   guestError,
@@ -166,21 +164,6 @@ export function PredictionPanel({
           value={stakeText}
           onChange={(event) => setStakeText(event.target.value.replace(/[^0-9]/g, ""))}
         />
-        <div className="stake-chips">
-          {stakePresets.map((preset) => (
-            <button
-              className={`quick-button ${stake === preset ? "active" : ""}`}
-              key={preset}
-              type="button"
-              onClick={() => setStakeText(String(Math.min(preset, balance)))}
-            >
-              {preset.toLocaleString("ja-JP")}
-            </button>
-          ))}
-          <button className="quick-button" type="button" onClick={() => setStakeText(String(balance))}>
-            最大
-          </button>
-        </div>
 
         <div className="return-grid">
           <div>

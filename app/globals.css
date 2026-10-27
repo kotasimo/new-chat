@@ -1599,12 +1599,6 @@ button.fixture:focus-visible .fixture-more {
   -webkit-appearance: none;
 }
 
-.stake-chips {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 8px;
-}
 
 .quick-button {
   height: 34px;
@@ -1985,9 +1979,6 @@ button.fixture:focus-visible .fixture-more {
     padding: 0;
   }
 
-  .side-panel .stake-chips {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 @media (min-width: 1061px) {
@@ -2305,9 +2296,6 @@ button.fixture:focus-visible .fixture-more {
     display: block;
   }
 
-  .side-panel .stake-chips {
-    display: grid;
-  }
 
   .side-panel .field-label,
   .side-panel .return-grid span {
