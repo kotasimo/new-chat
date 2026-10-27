@@ -1990,10 +1990,15 @@ button.fixture:focus-visible .fixture-more {
   }
 
   /* 下のタブは「マーケット」の1枚だけ。リーグは上の帯の2段目に出す。 */
+  /* 下のタブの4等分はリーグには効かせない。1行のまま横に流す。 */
   .sidebar .league-nav {
     position: static;
     grid-column: 1 / -1;
     grid-row: 2;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
     background: none;
     border: 0;
     border-radius: 0;
@@ -2001,13 +2006,26 @@ button.fixture:focus-visible .fixture-more {
     padding: 0;
     margin: 0;
     z-index: auto;
+    scrollbar-width: none;
+  }
+
+  .sidebar .league-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .sidebar .league-nav .nav-item {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 7px;
     height: 34px;
+    min-width: max-content;
     padding: 0 11px;
     border: 1px solid var(--line);
     border-radius: 999px;
+    font-size: 13px;
+  }
+
+  .sidebar .league-nav .nav-item span:not(.status-dot) {
     font-size: 13px;
   }
 
