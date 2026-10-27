@@ -1578,6 +1578,9 @@ button.fixture:focus-visible .fixture-more {
 }
 
 .stake-input {
+  /* 数字の上下ボタンは幅を食って押しにくいので出さない。 */
+  appearance: textfield;
+  -moz-appearance: textfield;
   width: 100%;
   height: 44px;
   border: 1px solid var(--line);
@@ -1588,6 +1591,12 @@ button.fixture:focus-visible .fixture-more {
   font-weight: 800;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.stake-input::-webkit-outer-spin-button,
+.stake-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
 }
 
 .stake-chips {

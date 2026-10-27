@@ -37,7 +37,8 @@ export function PredictionPanel({
   onNoticeShown,
   onPredictionCreated,
 }: PredictionPanelProps) {
-  const [stake, setStake] = useState(100);
+  const [stakeText, setStakeText] = useState("100");
+  const stake = Number(stakeText) || 0;
   const [toast, setToast] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -158,11 +159,12 @@ export function PredictionPanel({
         <input
           className="stake-input"
           id="stake"
-          min={10}
-          max={balance}
-          type="number"
-          value={stake}
-          onChange={(event) => setStake(Number(event.target.value))}
+          autoComplete="off"
+          inputMode="numeric"
+          placeholder="例: 500"
+          type="text"
+          value={stakeText}
+          onChange={(event) => setStakeText(event.target.value.replace(/[^0-9]/g, ""))}
         />
         <div className="stake-chips">
           {stakePresets.map((preset) => (
@@ -170,12 +172,12 @@ export function PredictionPanel({
               className={`quick-button ${stake === preset ? "active" : ""}`}
               key={preset}
               type="button"
-              onClick={() => setStake(Math.min(preset, balance))}
+              onClick={() => setStakeText(String(Math.min(preset, balance)))}
             >
               {preset.toLocaleString("ja-JP")}
             </button>
           ))}
-          <button className="quick-button" type="button" onClick={() => setStake(balance)}>
+          <button className="quick-button" type="button" onClick={() => setStakeText(String(balance))}>
             最大
           </button>
         </div>
