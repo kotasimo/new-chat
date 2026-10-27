@@ -129,90 +129,6 @@ button {
   object-fit: contain;
 }
 
-.sidebar-profile {
-  color: var(--ink);
-  display: grid;
-  gap: 7px;
-  margin: 12px 10px 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.sidebar-profile span {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.sidebar-profile-head {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.sidebar-profile b {
-  background: #eef5e8;
-  border: 1px solid #d6e4cf;
-  border-radius: 999px;
-  color: #4c6c2f;
-  font-size: 10px;
-  font-weight: 900;
-  line-height: 1;
-  padding: 5px 6px;
-  white-space: nowrap;
-}
-
-.sidebar-profile strong {
-  font-size: 16px;
-  line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sidebar-profile small {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.sidebar-profile-view {
-  align-items: center;
-  display: grid;
-  gap: 8px;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.sidebar-profile button {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 800;
-  height: 30px;
-  padding: 0 9px;
-}
-
-.sidebar-profile-edit {
-  display: grid;
-  gap: 6px;
-}
-
-.sidebar-profile-edit input {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  height: 34px;
-  min-width: 0;
-  padding: 0 9px;
-}
-
-.sidebar-profile button:disabled {
-  cursor: wait;
-  opacity: 0.62;
-}
-
 .sidebar-legal {
   border-top: 1px solid var(--line);
   display: grid;
@@ -231,13 +147,6 @@ button {
 
 .sidebar-legal a:hover {
   color: var(--ink);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 99px;
-  background: var(--green);
 }
 
 .board-layout {
@@ -360,9 +269,6 @@ button {
   cursor: wait;
   opacity: 0.64;
 }
-
-
-
 
 .tabs {
   display: flex;
@@ -1364,8 +1270,7 @@ button.fixture:focus-visible .fixture-more {
 .asset-card,
 .ticket,
 .ranking,
-.history-card,
-.note-card {
+.history-card {
   background: white;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1465,13 +1370,6 @@ button.fixture:focus-visible .fixture-more {
   background: #fafff6;
 }
 
-.asset-card-head {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-
 .asset-card span {
   color: var(--muted);
   font-size: 12px;
@@ -1509,8 +1407,7 @@ button.fixture:focus-visible .fixture-more {
 
 .ticket h2,
 .ranking h2,
-.history-card h2,
-.note-card h2 {
+.history-card h2 {
   margin: 0 0 12px;
   font-size: 18px;
 }
@@ -1599,7 +1496,6 @@ button.fixture:focus-visible .fixture-more {
   -webkit-appearance: none;
 }
 
-
 .quick-button {
   height: 34px;
   border: 1px solid var(--line);
@@ -1665,29 +1561,6 @@ button.fixture:focus-visible .fixture-more {
   color: #0f6b4a;
   font-size: 22px;
   font-weight: 900;
-}
-
-.rank-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 9px 0;
-  border-top: 1px solid var(--line);
-}
-
-.rank-row:first-of-type {
-  border-top: 0;
-}
-
-.rank-row b {
-  color: var(--gold);
-  margin-right: 6px;
-}
-
-.rank-row span {
-  color: var(--muted);
-  font-size: 13px;
 }
 
 .ranking-board {
@@ -1871,13 +1744,6 @@ button.fixture:focus-visible .fixture-more {
   font-size: 13px;
 }
 
-.note-card p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.7;
-}
-
 .toast {
   position: fixed;
   left: 50%;
@@ -1911,21 +1777,10 @@ button.fixture:focus-visible .fixture-more {
   .nav-title,
   .nav-item span:not(.status-dot),
   .sidebar-legal,
-  .sidebar-note,
-  .sidebar-profile span,
-  .sidebar-profile strong,
-  .sidebar-profile small,
-  .sidebar-profile button,
-  .sidebar-profile input {
+  .sidebar-note {
     display: none;
   }
-
-  .sidebar-profile {
-    border-top: 1px solid var(--line);
-    min-height: 42px;
-    margin: 12px 0 0;
-    padding: 12px 0 0;
-  }
+  
 
   .nav-item {
     justify-content: center;
@@ -2051,10 +1906,7 @@ button.fixture:focus-visible .fixture-more {
   .brand-mark {
     display: grid;
   }
-
-  .brand-name {
-    display: none;
-  }
+  
 
   .sidebar-balance {
     align-self: center;
@@ -2085,11 +1937,7 @@ button.fixture:focus-visible .fixture-more {
   }
 
   .brand span,
-  .nav-item span:not(.status-dot),
-  .sidebar-profile strong,
-  .sidebar-profile small,
-  .sidebar-profile button,
-  .sidebar-profile input {
+  .nav-item span:not(.status-dot) {
     display: inline;
   }
 
@@ -2120,46 +1968,11 @@ button.fixture:focus-visible .fixture-more {
     min-width: max-content;
     padding: 0 12px;
   }
-
-  .sidebar-profile {
-    border-top: 0;
-    align-items: flex-end;
-    display: flex;
-    gap: 8px;
-    grid-column: 4;
-    grid-row: 1;
-    justify-self: end;
-    margin: 0;
-    max-width: 46vw;
-    padding: 0;
-  }
-
-  .sidebar-profile small {
-    display: none;
-  }
-
-  .sidebar-profile-view,
-  .sidebar-profile-edit {
-    align-items: flex-end;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-width: none;
-  }
-
-  .sidebar-profile-view strong {
-    display: block;
-    font-size: 15px;
-    max-width: 92px;
-    text-align: right;
-  }
-
-  .sidebar-profile button {
-    height: 24px;
-    flex: 0 0 auto;
-    font-size: 11px;
-    padding: 0 7px;
-  }
+  
+  
+  
+  
+  
 
   .main-content {
     padding: 16px 16px 374px;
@@ -2274,8 +2087,6 @@ button.fixture:focus-visible .fixture-more {
     justify-content: space-between;
   }
 
-
-
   .bonus-card {
     align-items: stretch;
     flex-direction: column;
@@ -2327,7 +2138,6 @@ button.fixture:focus-visible .fixture-more {
     display: block;
   }
 
-
   .side-panel .field-label,
   .side-panel .return-grid span {
     display: block;
@@ -2348,9 +2158,6 @@ button.fixture:focus-visible .fixture-more {
     margin-top: 4px;
   }
 }
-
-
-
 
 .category-select {
   flex: 0 0 auto;
