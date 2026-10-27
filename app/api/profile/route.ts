@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProfileFromRequest } from "@/lib/auth-profile";
-import { getDemoPredictionHistory } from "@/lib/data";
+import { getDemoPredictionHistory, getOpenStakesByProfile } from "@/lib/data";
 import { getPeriodicBonusState } from "@/lib/periodic-bonus";
 import { createServerSupabaseClient, hasSupabaseConfig } from "@/lib/supabase";
 
@@ -19,17 +19,28 @@ export async function GET(request: Request) {
     const periodicBonus = getPeriodicBonusState(profile);
     const predictionHistory = await getDemoPredictionHistory(profile.id, 100);
 
-    // 自分より上の人数を数えて順位にする。同点は同じ順位になる。
-    const { count } = await supabase
+    // 資産は現金 + 結果待ちの賭け金。賭けても合計が減らないようにする。
+    const locked = await getOpenStakesByProfile(supabase);
+    const lockedPoints = locked.get(profile.id) ?? 0;
+    const assets = profile.points + lockedPoints;
+
+    const { data: others } = await supabase
       .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .gt("points", profile.points);
+      .select("id, points");
+
+    // 自分より資産が多い人数を数えて順位にする。同点は同じ順位になる。
+    const rank = (others ?? []).filter(
+      (other) => other.id !== profile.id &&
+        other.points + (locked.get(other.id) ?? 0) > assets,
+    ).length + 1;
 
     return NextResponse.json({
       profile,
       periodicBonus,
       predictionHistory,
-      rank: (count ?? 0) + 1,
+      lockedPoints,
+      assets,
+      rank,
     });
   } catch {
     return NextResponse.json(

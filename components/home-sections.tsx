@@ -10,6 +10,7 @@ type HomeSectionsProps = {
   fixtures: Market[];
   history: PredictionHistoryItem[];
   balance: number;
+  lockedPoints: number;
   rank: number | null;
   loading: boolean;
   now: number | null;
@@ -45,6 +46,7 @@ export function HomeSections({
   fixtures,
   history,
   balance,
+  lockedPoints,
   rank,
   loading,
   now,
@@ -91,12 +93,15 @@ export function HomeSections({
     <>
       <section className="my-strip" aria-label="自分の状況">
         <div>
-          <span>保有ポイント</span>
-          <strong>{loading ? "—" : formatPoints(balance)}</strong>
+          <span>資産</span>
+          <strong>{loading ? "—" : formatPoints(balance + lockedPoints)}</strong>
         </div>
         <div>
-          <span>結果待ち</span>
-          <strong>{loading ? "—" : `${stats.open}件`}</strong>
+          <span>投資中</span>
+          <strong>
+            {loading ? "—" : formatPoints(lockedPoints)}
+          </strong>
+          <small>{loading ? "" : `${stats.open}件`}</small>
         </div>
         <div>
           <span>今日の損益</span>

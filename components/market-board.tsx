@@ -53,6 +53,7 @@ export function MarketBoard({
   const [predictionHistory, setPredictionHistory] = useState(initialPredictionHistory);
   const [fullHistory, setFullHistory] = useState<PredictionHistoryItem[]>([]);
   const [rank, setRank] = useState<number | null>(null);
+  const [lockedPoints, setLockedPoints] = useState(0);
   const [guestLoading, setGuestLoading] = useState(true);
   const [guestReady, setGuestReady] = useState(false);
   const [guestError, setGuestError] = useState("");
@@ -91,6 +92,7 @@ export function MarketBoard({
           setPredictionHistory(result.predictionHistory.slice(0, 8));
           setFullHistory(result.predictionHistory);
           setRank(typeof result.rank === "number" ? result.rank : null);
+          setLockedPoints(Number(result.lockedPoints) || 0);
           setPeriodicBonus({
             amount: Number(result.periodicBonus?.amount ?? 1000),
             available: Boolean(result.periodicBonus?.available),
@@ -330,6 +332,7 @@ export function MarketBoard({
           <HomeSections
             balance={balance}
             fixtures={upcomingMarkets}
+            lockedPoints={lockedPoints}
             history={fullHistory}
             loading={guestLoading}
             now={now}
@@ -399,6 +402,7 @@ export function MarketBoard({
           setBalance(nextBalance);
           setPredictionHistory((history) => [prediction, ...history].slice(0, 8));
           setFullHistory((history) => [prediction, ...history]);
+          setLockedPoints((current) => current + prediction.stake);
         }}
       />
     </div>

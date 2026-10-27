@@ -2,6 +2,8 @@ import type { LeagueId } from "@/lib/leagues";
 import { initialMarkets } from "@/lib/mock-markets";
 import { getOrCreateProfileForUser } from "@/lib/auth-profile";
 import { createServerSupabaseClient, hasSupabaseConfig } from "@/lib/supabase";
+
+type SupabaseClient = ReturnType<typeof createServerSupabaseClient>;
 import type {
   Market,
   MarketCategory,
@@ -341,6 +343,33 @@ export async function getDemoPredictionHistory(
   }
 }
 
+/**
+ * 結果待ちの賭け金を人ごとに合計する。賭けた瞬間に points から引いているので、
+ * これを足し戻さないと「賭けるほど資産が減る」ように見えてしまう。
+ */
+export async function getOpenStakesByProfile(supabase: SupabaseClient) {
+  const locked = new Map<string, number>();
+  const pageSize = 1000;
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("predictions")
+      .select("profile_id, stake")
+      .eq("status", "open")
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+
+    for (const row of data ?? []) {
+      locked.set(row.profile_id, (locked.get(row.profile_id) ?? 0) + row.stake);
+    }
+
+    if (!data || data.length < pageSize) break;
+  }
+
+  return locked;
+}
+
 export async function getRanking(limit = 50): Promise<RankingItem[]> {
   if (!hasSupabaseConfig()) {
     return [];
@@ -348,19 +377,27 @@ export async function getRanking(limit = 50): Promise<RankingItem[]> {
 
   try {
     const supabase = createServerSupabaseClient({ admin: true });
+    const locked = await getOpenStakesByProfile(supabase);
+
+    // 拘束中を足してから並べ直すので、現金だけで足切りすると取りこぼす。
     const { data, error } = await supabase
       .from("profiles")
       .select("id, display_name, points")
       .order("points", { ascending: false })
-      .limit(limit);
+      .limit(Math.max(limit * 4, 200));
 
     if (error) throw error;
 
-    return (data ?? []).map((profile) => ({
-      id: profile.id,
-      displayName: profile.display_name || `ゲスト ${profile.id.slice(0, 4)}`,
-      points: profile.points,
-    }));
+    return (data ?? [])
+      .map((profile) => ({
+        id: profile.id,
+        displayName: profile.display_name || `ゲスト ${profile.id.slice(0, 4)}`,
+        points: profile.points,
+        lockedPoints: locked.get(profile.id) ?? 0,
+        assets: profile.points + (locked.get(profile.id) ?? 0),
+      }))
+      .sort((a, b) => b.assets - a.assets)
+      .slice(0, limit);
   } catch {
     return [];
   }

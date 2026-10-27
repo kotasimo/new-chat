@@ -51,7 +51,12 @@ export type UserProfile = {
 export type RankingItem = {
   id: string;
   displayName: string;
+  /** 現金。賭けたぶんはここから引かれている。 */
   points: number;
+  /** 結果待ちの賭け金。 */
+  lockedPoints: number;
+  /** 現金 + 結果待ち。順位はこれで決まる。 */
+  assets: number;
 };
 
 export type PredictionHistoryItem = {

@@ -15,7 +15,7 @@ export default async function RankingPage() {
           <header className="history-header">
             <div>
               <h1>ランキング</h1>
-              <p>保有ポイントが多い順に表示しています。</p>
+              <p>資産が多い順に表示しています。資産は現金と結果待ちの賭け金の合計です。</p>
             </div>
           </header>
 
@@ -28,7 +28,14 @@ export default async function RankingPage() {
                     <strong>{displayName(item.displayName, item.id)}</strong>
                     <span>ゲストID {item.id.slice(0, 8)}</span>
                   </div>
-                  <b>{item.points.toLocaleString("ja-JP")}pt</b>
+                  <b>
+                    {item.assets.toLocaleString("ja-JP")}pt
+                    {item.lockedPoints > 0 ? (
+                      <small>
+                        投資中 {item.lockedPoints.toLocaleString("ja-JP")}pt
+                      </small>
+                    ) : null}
+                  </b>
                 </article>
               ))
             ) : (
@@ -42,9 +49,10 @@ export default async function RankingPage() {
           <section className="ticket">
             <h2>ランキングについて</h2>
             <div className="selected-box">
-              <strong>保有ポイント順</strong>
+              <strong>資産順</strong>
               <span className="muted">
-                的中すると保有ポイントが増え、外れると投入分が減ります。
+                資産は現金と結果待ちの賭け金の合計です。予想しても資産は減らず、
+                的中すると増え、外れると賭けた分だけ減ります。
               </span>
             </div>
           </section>

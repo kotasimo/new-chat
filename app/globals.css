@@ -1695,6 +1695,21 @@ button.fixture:focus-visible .fixture-more {
   gap: 8px;
 }
 
+.ranking-entry b small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.my-strip small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 1px;
+}
+
 .ranking-entry {
   align-items: center;
   background: white;
