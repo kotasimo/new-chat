@@ -42,6 +42,31 @@ function dayKey(value: string | undefined) {
   return Number.isFinite(date.getTime()) ? dayKeyFormat.format(date) : "";
 }
 
+/**
+ * 日本からヨーロッパの試合を見ると、キックオフが深夜0時を回ることが多い。
+ * 日付だけ見て「明日」と言われても分かりにくいので、何試合が深夜開始かを添える。
+ */
+function lateNightNote(markets: Market[]) {
+  const late = markets.filter((market) => {
+    if (!market.startsAt) return false;
+
+    const hour = Number(hourFormat.format(new Date(market.startsAt)));
+
+    return Number.isFinite(hour) && hour < 6;
+  }).length;
+
+  if (!late) return "";
+  if (late === markets.length) return `${late}試合とも深夜0時以降に始まります`;
+
+  return `うち${late}試合は深夜0時以降に始まります`;
+}
+
+const hourFormat = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  hour12: false,
+  timeZone: "Asia/Tokyo",
+});
+
 export function HomeSections({
   fixtures,
   history,
@@ -174,6 +199,10 @@ export function HomeSections({
               </button>
             ))}
           </div>
+
+          {selectedDay && lateNightNote(selectedDay.markets) ? (
+            <p className="late-note">{lateNightNote(selectedDay.markets)}</p>
+          ) : null}
 
           {selectedDay ? <DayFixtures
             markets={selectedDay.markets}

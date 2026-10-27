@@ -1,5 +1,6 @@
 "use client";
 
+import { MobileFooter } from "@/components/mobile-footer";
 import { AccountCard } from "@/components/account-card";
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
@@ -89,6 +90,7 @@ export function TransactionsBoard() {
             />
           </section>
         </div>
+        <MobileFooter />
       </main>
 
       <aside className="side-panel">

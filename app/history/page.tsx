@@ -1,3 +1,4 @@
+import { MobileFooter } from "@/components/mobile-footer";
 import { AccountCard } from "@/components/account-card";
 import { AppSidebar } from "@/components/app-sidebar";
 import { getClosedMarkets } from "@/lib/data";
@@ -128,6 +129,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
               </p>
             )}
           </div>
+          <MobileFooter />
         </main>
 
         <aside className="side-panel">

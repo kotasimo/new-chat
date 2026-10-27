@@ -486,6 +486,13 @@ button {
 }
 
 /* ホーム: リーグごとのまとまり */
+.late-note {
+  margin: -6px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .day-group {
   margin-bottom: 18px;
 }
@@ -1738,6 +1745,10 @@ button.fixture:focus-visible .fixture-more {
   color: #5f241d;
 }
 
+.mobile-footer {
+  display: none;
+}
+
 .empty-text {
   margin: 0;
   color: var(--muted);
@@ -1795,23 +1806,38 @@ button.fixture:focus-visible .fixture-more {
     padding-bottom: 260px;
   }
 
+  /* 半透明だと下の一覧が透けて読みにくいので、不透明にする。 */
   .side-panel {
-    background: rgba(251, 252, 249, 0.96);
+    background: var(--panel);
     border-left: 0;
     border-top: 1px solid var(--line);
+    border-radius: 14px 14px 0 0;
     bottom: 0;
-    box-shadow: 0 -12px 28px rgba(16, 20, 18, 0.1);
+    box-shadow: 0 -12px 28px rgba(16, 20, 18, 0.16);
     display: none;
     grid-template-columns: 1fr;
     height: auto;
-    left: 84px;
+    left: 0;
     max-height: 58vh;
     overflow-y: auto;
-    padding: 12px;
+    padding: 16px 12px 12px;
     position: fixed;
     right: 0;
     top: auto;
     z-index: 30;
+  }
+
+  /* 上端の掴み手。シートだと分かるようにする。 */
+  .side-panel.has-selection::before {
+    content: "";
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    width: 38px;
+    height: 4px;
+    border-radius: 999px;
+    background: #d7ddd6;
+    transform: translateX(-50%);
   }
 
   .side-panel.has-selection {
@@ -1876,7 +1902,7 @@ button.fixture:focus-visible .fixture-more {
 @media (max-width: 1060px) {
   .app-shell {
     display: block;
-    padding-top: 86px;
+    padding-top: 132px;
   }
 
   .sidebar {
@@ -1962,6 +1988,34 @@ button.fixture:focus-visible .fixture-more {
     display: none;
   }
 
+  /* 下のタブは「マーケット」の1枚だけ。リーグは上の帯の2段目に出す。 */
+  .sidebar .league-nav {
+    position: static;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    z-index: auto;
+  }
+
+  .sidebar .league-nav .nav-item {
+    height: 34px;
+    padding: 0 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 13px;
+  }
+
+  .sidebar .league-nav .nav-item.active {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #fff;
+  }
+
   .nav-item {
     height: 43px;
     width: auto;
@@ -1976,6 +2030,48 @@ button.fixture:focus-visible .fixture-more {
 
   .main-content {
     padding: 16px 16px 374px;
+  }
+
+  /* 85px幅に「10,000pt」は入らないので2列にする。 */
+  .my-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* 左の列が畳まれると出せなくなるので、本文の末尾に出す。 */
+  .mobile-footer {
+    display: block;
+    border-top: 1px solid var(--line);
+    margin-top: 24px;
+    padding-top: 16px;
+  }
+
+  .mobile-footer p {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .mobile-footer p strong {
+    color: var(--ink);
+    font-weight: 800;
+  }
+
+  .mobile-footer a {
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .mobile-footer nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+  }
+
+  .mobile-footer nav a {
+    font-size: 13px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 
   .topbar {

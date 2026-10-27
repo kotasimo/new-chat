@@ -1,5 +1,6 @@
 "use client";
 
+import { MobileFooter } from "@/components/mobile-footer";
 import { Search, X } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -386,6 +387,7 @@ export function MarketBoard({
             <p className="empty-text">一致するマーケットはありません。</p>
           )}
         </div>
+        <MobileFooter />
       </main>
 
       <PredictionPanel

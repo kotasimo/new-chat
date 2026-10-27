@@ -1,3 +1,4 @@
+import { MobileFooter } from "@/components/mobile-footer";
 import { UserRound } from "lucide-react";
 import { AccountCard } from "@/components/account-card";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -46,6 +47,7 @@ export default async function RankingPage() {
               <p className="empty-text">ランキングはまだありません。</p>
             )}
           </div>
+          <MobileFooter />
         </main>
 
         <aside className="side-panel">
