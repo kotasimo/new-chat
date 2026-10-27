@@ -17,7 +17,7 @@ import { leagues, type LeagueId } from "@/lib/leagues";
 
 const navItems = [
   { label: "予測する", href: "/", icon: Trophy },
-  { label: "取引履歴", href: "/transactions", icon: ReceiptText },
+  { label: "マイページ", href: "/me", icon: ReceiptText },
   { label: "ランキング", href: "/ranking", icon: ChartNoAxesColumnIncreasing },
   { label: "終了市場", href: "/history", icon: Clock3 },
 ];

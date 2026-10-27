@@ -1,13 +1,6 @@
-import { AppSidebar } from "@/components/app-sidebar";
-import { TransactionsBoard } from "@/components/transactions-board";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
+// 取引履歴の中身はマイページに統合した。古いリンクのために残す。
 export default function TransactionsPage() {
-  return (
-    <div className="app-shell">
-      <AppSidebar />
-      <TransactionsBoard />
-    </div>
-  );
+  redirect("/me");
 }
