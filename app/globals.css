@@ -1967,18 +1967,19 @@ button.fixture:focus-visible .fixture-more {
     display: inline;
   }
 
+  /* 横に流すと4つ目が画面外に出るので、4等分して全部見えるようにする。 */
   .nav-list {
-    background: #f4f6f1;
+    background: var(--panel);
     bottom: 0;
-    border: 1px solid var(--line);
-    border-radius: 12px 12px 0 0;
-    border-bottom: 0;
-    box-shadow: 0 -10px 26px rgba(16, 20, 18, 0.1);
-    display: flex;
-    gap: 4px;
+    border: 0;
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -10px 26px rgba(16, 20, 18, 0.08);
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
     left: 0;
-    overflow-x: auto;
-    padding: 5px 6px;
+    overflow: visible;
+    padding: 4px 2px calc(4px + env(safe-area-inset-bottom));
     position: fixed;
     right: 0;
     z-index: 35;
@@ -2017,10 +2018,20 @@ button.fixture:focus-visible .fixture-more {
   }
 
   .nav-item {
-    height: 43px;
+    height: 48px;
     width: auto;
-    min-width: max-content;
-    padding: 0 12px;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 2px;
+    border-radius: 10px;
+  }
+
+  .nav-item span:not(.status-dot) {
+    font-size: 10.5px;
+    line-height: 1.2;
+    white-space: nowrap;
   }
   
   
