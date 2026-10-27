@@ -9,7 +9,7 @@ import { MarketCard } from "@/components/market-card";
 import { PredictionPanel } from "@/components/prediction-panel";
 import { fetchWithAnonymousAuth } from "@/lib/anonymous-auth";
 import type { MarketSource } from "@/lib/data";
-import { leagueLabel, type LeagueId } from "@/lib/leagues";
+import type { LeagueId } from "@/lib/leagues";
 import { fixtureKey, marketTypeRank, parseFixture } from "@/lib/market-type";
 import type {
   Market,
@@ -193,17 +193,6 @@ export function MarketBoard({
     return fixture ? `${fixture.home} vs ${fixture.away}` : "この試合";
   }, [focusedFixture, markets]);
 
-  const lastSyncedAt = useMemo(() => {
-    const latest = markets.reduce((max, market) => {
-      if (!market.syncedAt) return max;
-
-      const time = new Date(market.syncedAt).getTime();
-      return Number.isFinite(time) && time > max ? time : max;
-    }, 0);
-
-    return latest ? new Date(latest).toISOString() : "";
-  }, [markets]);
-
   function clearSelectionOnOutsideClick(event: MouseEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement;
 
@@ -344,17 +333,9 @@ export function MarketBoard({
           />
         ) : null}
 
-        {focusedFixture ? null : (
+        {activeLeague || focusedFixture ? null : (
           <div className="section-head">
-            <h2>{activeLeague ? `${leagueLabel(activeLeague)}のマーケット` : "注目マーケット"}</h2>
-            <div>
-              <span>倍率は予測確率から自動換算</span>
-              {lastSyncedAt ? (
-                <time dateTime={lastSyncedAt}>
-                  最終同期 {formatSyncTime(lastSyncedAt)}
-                </time>
-              ) : null}
-            </div>
+            <h2>注目マーケット</h2>
           </div>
         )}
 
@@ -420,16 +401,3 @@ function isWaitingResult(market: Market, now: number | null) {
   return Number.isFinite(lockTime) && lockTime <= now;
 }
 
-function formatSyncTime(value: string) {
-  const date = new Date(value);
-
-  if (!Number.isFinite(date.getTime())) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
-}
