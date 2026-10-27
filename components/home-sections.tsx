@@ -13,6 +13,7 @@ type HomeSectionsProps = {
   lockedPoints: number;
   rank: number | null;
   loading: boolean;
+  showFixtures: boolean;
   now: number | null;
   selectedOutcomeId?: string;
   onSelect: (prediction: SelectedPrediction) => void;
@@ -74,6 +75,7 @@ export function HomeSections({
   lockedPoints,
   rank,
   loading,
+  showFixtures,
   now,
   selectedOutcomeId,
   onSelect,
@@ -117,27 +119,31 @@ export function HomeSections({
   return (
     <>
       <section className="my-strip" aria-label="自分の状況">
-        <div>
+        <div className="my-assets">
           <span>資産</span>
           <strong>{loading ? "—" : formatPoints(balance + lockedPoints)}</strong>
         </div>
-        <div>
-          <span>投資中</span>
-          <strong>
-            {loading ? "—" : formatPoints(lockedPoints)}
-          </strong>
-          <small>{loading ? "" : `${stats.open}件`}</small>
-        </div>
-        <div>
-          <span>今日の損益</span>
-          <strong className={stats.todayProfit > 0 ? "up" : stats.todayProfit < 0 ? "down" : ""}>
-            {loading ? "—" : formatSigned(stats.todayProfit)}
-          </strong>
-        </div>
-        <div>
-          <span>順位</span>
-          <strong>{loading || rank === null ? "—" : `${rank}位`}</strong>
-        </div>
+        <dl className="my-detail">
+          <div>
+            <dt>投資中</dt>
+            <dd>
+              {loading ? "—" : formatPoints(lockedPoints)}
+              {loading || !stats.open ? null : <small>{stats.open}件</small>}
+            </dd>
+          </div>
+          {stats.todayProfit !== 0 ? (
+            <div>
+              <dt>今日</dt>
+              <dd className={stats.todayProfit > 0 ? "up" : "down"}>
+                {formatSigned(stats.todayProfit)}
+              </dd>
+            </div>
+          ) : null}
+          <div>
+            <dt>順位</dt>
+            <dd>{loading || rank === null ? "—" : `${rank}位`}</dd>
+          </div>
+        </dl>
       </section>
 
       {settled.length ? (
@@ -175,7 +181,7 @@ export function HomeSections({
         </section>
       ) : null}
 
-      {days.length ? (
+      {showFixtures && days.length ? (
         <>
           <div className="section-head">
             <h2>試合を予想する</h2>

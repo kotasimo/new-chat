@@ -176,10 +176,11 @@ export function MarketBoard({
       return 0;
     });
   }, [activeLeague, activeTab, focusedFixture, markets, now, searchQuery]);
-  // ホームで、絞り込みも検索もしていないときだけ直近の試合を出す。
+  const isHome = !activeLeague && !focusedFixture;
+
+  // 絞り込みや検索をしているときは、日付別の試合はしまう。
   const showUpcoming =
-    !activeLeague &&
-    !focusedFixture &&
+    isHome &&
     activeTab === "all" &&
     !searchQuery.trim() &&
     upcomingMarkets.length > 0;
@@ -318,7 +319,7 @@ export function MarketBoard({
           </div>
         ) : null}
 
-        {showUpcoming ? (
+        {isHome ? (
           <HomeSections
             balance={balance}
             fixtures={upcomingMarkets}
@@ -327,6 +328,7 @@ export function MarketBoard({
             loading={guestLoading}
             now={now}
             rank={rank}
+            showFixtures={showUpcoming}
             selectedOutcomeId={selectedPrediction?.outcomeId}
             onSelect={setSelectedPrediction}
             onFocusFixture={setFocusedFixture}

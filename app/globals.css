@@ -326,40 +326,75 @@ button {
   font-size: 12px;
 }
 
-/* ホーム: 自分の状況 */
+/* ホーム: 自分の状況。資産を主役にして1行に収める。 */
 .my-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--line);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
   margin-bottom: 18px;
 }
 
-.my-strip div {
-  background: var(--panel);
-  padding: 11px 14px;
+.my-assets {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  min-width: 0;
 }
 
-.my-strip span {
-  display: block;
+.my-assets span {
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
-  margin-bottom: 3px;
 }
 
-.my-strip strong {
-  font-size: 19px;
+.my-assets strong {
+  font-size: 27px;
   font-weight: 800;
   letter-spacing: -0.02em;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
-.my-strip strong.up { color: #0f6b4a; }
-.my-strip strong.down { color: #b3261e; }
+.my-detail {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+}
+
+.my-detail div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.my-detail dt {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.my-detail dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.my-detail dd small {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.my-detail dd.up { color: #0f6b4a; }
+.my-detail dd.down { color: #b3261e; }
 
 /* ホーム: 結果が出た予想 */
 .settled-section {
@@ -1582,13 +1617,6 @@ button.fixture:focus-visible .fixture-more {
   font-weight: 600;
 }
 
-.my-strip small {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-  margin-top: 1px;
-}
 
 .ranking-entry {
   align-items: center;
@@ -2061,10 +2089,6 @@ button.fixture:focus-visible .fixture-more {
     padding: 16px 16px 374px;
   }
 
-  /* 85px幅に「10,000pt」は入らないので2列にする。 */
-  .my-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 
   /* 左の列が畳まれると出せなくなるので、本文の末尾に出す。 */
   .mobile-footer {

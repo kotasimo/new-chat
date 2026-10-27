@@ -24,11 +24,13 @@ const navItems = [
 
 type AppSidebarProps = {
   activeLeague?: LeagueId | null;
+  /** ホームは自分の状況の帯で資産を大きく出すので、ここでは重ねて出さない。 */
+  hideBalance?: boolean;
 };
 
-export function AppSidebar({ activeLeague = null }: AppSidebarProps) {
+export function AppSidebar({ activeLeague = null, hideBalance = false }: AppSidebarProps) {
   const pathname = usePathname();
-  const [points, setPoints] = useState<number | null>(null);
+  const [assets, setAssets] = useState<number | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -41,7 +43,9 @@ export function AppSidebar({ activeLeague = null }: AppSidebarProps) {
         if (!response.ok) return;
 
         if (!ignore) {
-          setPoints(result.profile.points);
+          setAssets(
+            typeof result.assets === "number" ? result.assets : result.profile.points,
+          );
         }
       } catch {
         // Keep the fallback name. Sidebar should never block the app.
@@ -59,7 +63,7 @@ export function AppSidebar({ activeLeague = null }: AppSidebarProps) {
     function updatePoints(event: Event) {
       const points = (event as CustomEvent<{ points?: number }>).detail?.points;
       if (typeof points === "number") {
-        setPoints(points);
+        setAssets(points);
       }
     }
 
@@ -72,9 +76,11 @@ export function AppSidebar({ activeLeague = null }: AppSidebarProps) {
       <Link className="brand" href="/" aria-label="予測する画面へ戻る">
         <div className="brand-mark">Y</div>
       </Link>
-      <div className="sidebar-balance" aria-label="保有ポイント">
-        {points === null ? "—" : `${points.toLocaleString("ja-JP")}pt`}
-      </div>
+      {hideBalance ? null : (
+        <div className="sidebar-balance" aria-label="資産">
+          {assets === null ? "—" : `${assets.toLocaleString("ja-JP")}pt`}
+        </div>
+      )}
       {pathname === "/" ? (
         <button
           aria-label="マーケット検索"
