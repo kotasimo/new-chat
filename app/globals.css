@@ -1324,6 +1324,7 @@ button.fixture:focus-visible .fixture-more {
 .account-card {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1374,6 +1375,31 @@ button.fixture:focus-visible .fixture-more {
   border-color: #15805a;
   background: var(--green-soft);
   color: #0f6b4a;
+}
+
+.account-login {
+  flex: 1 0 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.account-login:hover:not(:disabled) {
+  border-color: #15805a;
+  background: var(--green-soft);
+  color: #0f6b4a;
+}
+
+.account-login:disabled {
+  color: var(--muted);
+  cursor: wait;
+}
+
+.account-notice {
+  color: #b3261e;
 }
 
 .account-edit {
