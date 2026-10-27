@@ -379,16 +379,26 @@ export async function getRanking(limit = 50): Promise<RankingItem[]> {
     const supabase = createServerSupabaseClient({ admin: true });
     const locked = await getOpenStakesByProfile(supabase);
 
-    // 拘束中を足してから並べ直すので、現金だけで足切りすると取りこぼす。
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, display_name, points")
-      .order("points", { ascending: false })
-      .limit(Math.max(limit * 4, 200));
+    // 拘束中を足してから並べ直すので、現金で足切りすると取りこぼす。
+    // 同点が多く、現金順の上位N件に入るかどうかが運任せになるため全件読む。
+    const rows = [];
+    const pageSize = 1000;
 
-    if (error) throw error;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, display_name, points")
+        .order("points", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
 
-    return (data ?? [])
+      if (error) throw error;
+
+      rows.push(...(data ?? []));
+      if (!data || data.length < pageSize) break;
+    }
+
+    return rows
       .map((profile) => ({
         id: profile.id,
         displayName: profile.display_name || `ゲスト ${profile.id.slice(0, 4)}`,

@@ -1717,7 +1717,7 @@ button.fixture:focus-visible .fixture-more {
   border-radius: 8px;
   display: grid;
   gap: 14px;
-  grid-template-columns: 44px minmax(0, 1fr) max-content;
+  grid-template-columns: 44px 34px minmax(0, 1fr) max-content;
   padding: 14px 16px;
 }
 
@@ -1729,6 +1729,21 @@ button.fixture:focus-visible .fixture-more {
 .ranking-entry:nth-child(2),
 .ranking-entry:nth-child(3) {
   background: #fbfcf9;
+}
+
+.ranking-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #eef0ed;
+  color: #46514b;
+}
+
+.ranking-entry:nth-child(1) .ranking-avatar {
+  background: #f6ead0;
+  color: #8a6a12;
 }
 
 .ranking-rank {

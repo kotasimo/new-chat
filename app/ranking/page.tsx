@@ -1,3 +1,4 @@
+import { UserRound } from "lucide-react";
 import { AccountCard } from "@/components/account-card";
 import { AppSidebar } from "@/components/app-sidebar";
 import { getRanking } from "@/lib/data";
@@ -24,6 +25,9 @@ export default async function RankingPage() {
               ranking.map((item, index) => (
                 <article className="ranking-entry" key={item.id}>
                   <div className="ranking-rank">{index + 1}</div>
+                  <span className="ranking-avatar" aria-hidden="true">
+                    <UserRound size={17} />
+                  </span>
                   <div>
                     <strong>{displayName(item.displayName, item.id)}</strong>
                     <span>ゲストID {item.id.slice(0, 8)}</span>
